@@ -3,6 +3,9 @@
 
 When you know the forward op name, use api-helper skill to get backward op needed for forward op.
 
+## Coding Rules
+- Ensure there is one operator in one .cc file
+
 #### Case 1: Standalone Grad Operator:
  - If the backward uses `Emit("XXXGrad", ...)`, it is dedicated grad operator.
  - write xxx_grad.cc in `op_plugin/ops/kernel/xxx_grad.cc`

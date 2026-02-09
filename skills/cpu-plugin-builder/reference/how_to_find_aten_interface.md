@@ -34,7 +34,6 @@ When you know the MindSpore op YAML, pick the best matching ATen operator.
 - Ignore the last two return values when mapping to MS outputs.
 - Implementation reference: `mindspore_op_plugin/op_plugin/ops/kernel/batch_norm_ext.cc`.
 
-
 #### Convolution example (conv2d_ext)
 `conv2d_ext` -> MindSpore op
 `convolution_out` -> selected ATen op

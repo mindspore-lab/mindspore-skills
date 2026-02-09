@@ -1,0 +1,32 @@
+## Purpose
+Generate comprehensive, checklist-driven tests for MindSpore mint operators, aligned with PyTorch.
+
+## Mandatory Rules
+cover all test cases in the checklist:
+- Validate default-parameter scenario.
+- Validate empty tensor.
+- Validate `inf` and `nan`.
+- Supported dtypes aligned with `pytorch_cpu`.
+- Validate input value ranges.
+- Cover input dimensions 0D-8D.
+- Cover all supported dtypes.
+- Support implicit type promotion.
+- Support broadcasting.
+- Forward accuracy verification passes.
+- Backward verification.
+- Support dynamic shape/rank/attributes.
+- Support `bf16`.
+- Support non-contiguous inputs.
+- Forward/backward results match `torch_cpu` with zero diff.
+- For multiple inputs, allow different dtypes per tensor.
+- If vmap is supported, provide batch 8,16,32,64,128 cases (level 1).
+  
+If backward is supported: each applicable test scenario **test forward and backward together**. 
+
+- Only float and complex dtypes require backward.
+- PyTorch-unsupported scenarios do not need tests.
+- `allclose_nparray` must be called with default tolerances (atol=0, rtol=0); omit parameters.
+- Do not use `sum` or other operators to avoid potential debugging problems.
+
+## Where to reference
+- Existing tests: `mindspore_op_plugin/tests/st/mint/test_*.py`

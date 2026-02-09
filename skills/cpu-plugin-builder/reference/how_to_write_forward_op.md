@@ -2,6 +2,9 @@
 ### HOW TO WRITE KERNEL FILE
 When you know the op name, create the operator file at `mindspore_op_plugin/op_plugin/ops/kernel/<op_name>.cc`:
 
+## Coding Rules
+- Ensure there is one operator in one .cc file
+
 #### Template for unary operators (1 input, 1 output):
 `OpName` -> MindSpore Primitive OP name to use
 `op_name_out` -> Aten op name to use
@@ -134,10 +137,10 @@ at::cross_out(at_output, at_input, at_other, dim_opt);
 
 **Common sentinel values:**
 
-| Type | Sentinel Value | Meaning |
-|------|----------------|---------|
-| `int` | `-65530` | None |
-| `float` | Check YAML | None |
+| Type    | Sentinel Value | Meaning |
+| ------- | -------------- | ------- |
+| `int`   | `-65530`       | None    |
+| `float` | Check YAML     | None    |
 
 **Alternative pattern using IsNoneInput:**
 
