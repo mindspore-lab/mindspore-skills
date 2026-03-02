@@ -4,6 +4,11 @@
   "version": "1.1.0",
   "skills": [
     {
+      "name": "mindspore-env-deploy",
+      "description": "Deploy MindSpore environment with CANN support for Ascend NPU",
+      "path": "skills/mindspore-env-deploy/SKILL.md"
+    },
+    {
       "name": "api-helper",
       "description": "Find API call chains and operator wiring in MindSpore codebase",
       "path": "skills/api-helper/SKILL.md"
@@ -47,6 +52,11 @@
       "name": "model-migrate",
       "description": "Migrate PyTorch repos to MindSpore",
       "path": "skills/model-migrate/SKILL.md"
+    },
+    {
+      "name": "mindspore-aclnn-operator-devflow",
+      "description": "Build MindSpore ACLNN operators for Huawei Ascend",
+      "path": "skills/mindspore-aclnn-operator-devflow/SKILL.md"
     }
   ]
 }

@@ -1,7 +1,7 @@
 {
   "name": "mscode",
-  "version": "1.0.0",
-  "description": "Agent Skills for MindSpore deep learning framework development including CPU/GPU/NPU operator building, testing, optimization, and model migration from PyTorch/HuggingFace",
+  "version": "1.1.0",
+  "description": "Agent Skills for MindSpore deep learning framework development including environment deployment, CPU/GPU/NPU operator building, testing, optimization, and model migration from PyTorch/HuggingFace",
   "author": {
     "name": "MindSpore"
   },
@@ -11,12 +11,14 @@
   "keywords": [
     "mindspore",
     "deep-learning",
+    "environment-setup",
     "operator-development",
     "cpu-operators",
     "gpu-operators",
     "npu-operators",
     "cuda",
     "ascend",
+    "cann",
     "aten",
     "pytorch",
     "model-migration",

@@ -18,6 +18,7 @@ Register the marketplace and install:
 Then use slash command:
 
 ```
+/mscode:mindspore-env-deploy
 /mscode:cpu-plugin-builder
 /mscode:cpu-native-builder
 /mscode:gpu-builder
@@ -28,6 +29,7 @@ Then use slash command:
 /mscode:migrate
 /mscode:model-migrate
 /mscode:npu-builder
+/mscode:mindspore-aclnn-operator-devflow
 /mscode:api-helper
 ```
 
@@ -50,6 +52,7 @@ git clone https://github.com/vigo999/mindspore-skills.git .opencode
 Then in OpenCode:
 
 ```
+/mindspore-env-deploy
 /cpu-plugin-builder
 ```
 
@@ -90,6 +93,12 @@ See [Codex AGENTS guide](https://developers.openai.com/codex/guides/agents-md) f
 
 ## Available Skills
 
+### Environment Setup
+
+| Skill | Description |
+|-------|-------------|
+| `mindspore-env-deploy` | Deploy MindSpore environment with CANN support for Ascend NPU |
+
 ### Operator Development
 
 | Skill | Description |
@@ -99,6 +108,7 @@ See [Codex AGENTS guide](https://developers.openai.com/codex/guides/agents-md) f
 | `cpu-native-builder` | Build native CPU kernels with Eigen/SLEEF |
 | `gpu-builder` | Build GPU operators with CUDA |
 | `npu-builder` | Build NPU operators for Huawei Ascend |
+| `mindspore-aclnn-operator-devflow` | Build MindSpore ACLNN operators for Huawei Ascend with complete development workflow |
 
 ### Model Migration
 
@@ -111,6 +121,12 @@ See [Codex AGENTS guide](https://developers.openai.com/codex/guides/agents-md) f
 
 ## Available Commands
 
+### Environment Setup
+
+| Command | Description |
+|---------|-------------|
+| `/mindspore-env-deploy` | MindSpore environment deployment workflow |
+
 ### Operator Development
 
 | Command | Description |
@@ -120,6 +136,7 @@ See [Codex AGENTS guide](https://developers.openai.com/codex/guides/agents-md) f
 | `/cpu-native-builder` | Native kernel workflow |
 | `/gpu-builder` | CUDA kernel workflow |
 | `/npu-builder` | Ascend NPU workflow |
+| `/mindspore-aclnn-operator-devflow` | ACLNN operator development workflow |
 
 ### Model Migration
 
@@ -133,6 +150,14 @@ See [Codex AGENTS guide](https://developers.openai.com/codex/guides/agents-md) f
 | `/model-migrate` | PyTorch repo migration workflow |
 
 ## Usage Examples
+
+### Deploy MindSpore environment
+
+```
+/mindspore-env-deploy
+
+> Help me set up a MindSpore development environment with Ascend NPU support
+```
 
 ### Build a CPU operator
 
