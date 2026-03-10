@@ -29,7 +29,7 @@ Systematic workflow for compiling MindSpore from source on macOS Apple Silicon. 
 |-------|-------------|--------------|
 | Environment | `conda activate mindspore_py310` | `python --version` shows 3.10 |
 | Source | `git clone https://gitcode.com/mindspore/mindspore.git` | `build.sh` exists |
-| Dependencies | `conda install cmake=3.22.3 patch autoconf -y` | `cmake --version` |
+| Dependencies | `conda install cmake=3.22.3 patch autoconf -y` + `pip install ... pybind11` | `cmake --version` |
 | Build | `bash build.sh -e cpu -S on -j4` | Check `output/` directory |
 | Install | `pip install output/mindspore-*.whl` | `import mindspore` works |
 | Verify | `mindspore.run_check()` | Prints success message |
@@ -105,7 +105,7 @@ conda install cmake=3.22.3 patch autoconf -y
 #### Python Packages
 
 ```bash
-pip install wheel==0.46.3 PyYAML==6.0.2 numpy==1.26.4 -i https://repo.huaweicloud.com/repository/pypi/simple/
+pip install wheel==0.46.3 PyYAML==6.0.2 numpy==1.26.4 pybind11 -i https://repo.huaweicloud.com/repository/pypi/simple/
 ```
 
 ### Step 4: Compile MindSpore
@@ -170,6 +170,8 @@ python -c "import mindspore;print(mindspore.__version__)"
 | Not in source directory | `build.sh: No such file` | Verify `pwd` shows mindspore/ |
 | Reusing old cache with new source | Cryptic build failures | Clear `.mslib/` and rebuild |
 | Installing without uninstalling old version | Version conflicts | `pip uninstall mindspore -y` first |
+| Missing pybind11 | `'pybind11/pybind11.h' file not found` | Install: `pip install pybind11`, then clean CMake cache and rebuild |
+| Stale CMake cache | Same error persists after installing missing package | Delete `build/mindspore/CMakeCache.txt` and `build/mindspore/CMakeFiles/`, then rebuild |
 
 **When build fails:**
 1. Check `reference/troubleshooting.md` for matching error pattern

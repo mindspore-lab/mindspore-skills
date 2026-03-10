@@ -114,24 +114,74 @@ set(MACOSX_SDK_REGEX "MacOSX(1[1-9]|[2-9][0-9])(\\.\\d+)?")
 
 **Error Message**:
 ```
-error: variable 'x' set but not used [-Werror,-Wunused-but-set-variable]
+/path/to/flatbuffers-src/src/idl_gen_rust.cpp:499:12: error: variable 'i' set but not used [-Werror,-Wunused-but-set-variable]
+  499 |     size_t i = 0;
+      |            ^
+1 error generated.
 ```
 
-**Root Cause**: Apple Clang 17.0 introduced stricter warnings. flatbuffers third-party library triggers this warning, and since it compiles with `-Werror`, warnings become errors.
+**Root Cause**: Apple Clang 17.0 introduced stricter warnings. flatbuffers v2.0.0 third-party library triggers this warning in `idl_gen_rust.cpp`, and since flatbuffers compiles with `-Werror` hardcoded in its own CMakeLists.txt (line 225), warnings become errors.
 
-**Solution**: Modify `cmake/external_libs/flatbuffers.cmake`:
+**Important**: The `cmake/external_libs/flatbuffers.cmake` already contains `-Wno-unused-but-set-variable` in `flatbuffers_CXXFLAGS` and `-DFLATBUFFERS_STRICT_MODE=OFF` in CMAKE_OPTION, but these **do not work** because:
+1. `flatbuffers_CXXFLAGS` is only used for the library build, not the `flatc` compiler tool
+2. `FLATBUFFERS_STRICT_MODE` is not recognized by flatbuffers v2.0.0 (CMake warns "Manually-specified variables were not used")
 
-1. At line 57, add warning suppression flags:
+**Solution**: The downloaded flatbuffers source must be patched after extraction. Two approaches:
+
+### Approach 1: Manual Patch (Quick Fix)
+After the first build failure, manually patch the downloaded source:
+
+```bash
+# Edit the downloaded flatbuffers CMakeLists.txt
+vim build/mindspore/_deps/flatbuffers-src/CMakeLists.txt
+
+# Find line 225 (in the APPLE section):
+# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -pedantic -Werror -Wextra -Wno-unused-parameter")
+
+# Change to:
+# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -pedantic -Werror -Wextra -Wno-unused-parameter -Wno-unused-but-set-variable")
+
+# Then rebuild:
+bash build.sh -e cpu -S on -j4
+```
+
+### Approach 2: Permanent Patch (Recommended)
+Create a patch file and modify `cmake/external_libs/flatbuffers.cmake` to apply it automatically:
+
+1. Create patch file `cmake/external_libs/flatbuffers_clang17.patch`:
+```diff
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -222,7 +222,7 @@ elseif(CMAKE_TOOLCHAIN_FILE)
+   message(STATUS "Using toolchain file: ${CMAKE_TOOLCHAIN_FILE}.")
+ elseif(APPLE)
+   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -stdlib=libc++")
+-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -pedantic -Werror -Wextra -Wno-unused-parameter")
++  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -pedantic -Werror -Wextra -Wno-unused-parameter -Wno-unused-but-set-variable")
+   set(FLATBUFFERS_PRIVATE_CXX_FLAGS "-Wold-style-cast")
+ elseif(CMAKE_COMPILER_IS_GNUCXX)
+   if(CYGWIN)
+```
+
+2. Modify `cmake/external_libs/flatbuffers.cmake` line 60-66 to add PATCHES parameter:
 ```cmake
-set(flatbuffers_CXXFLAGS "${flatbuffers_CXXFLAGS} -Wno-deprecated -Wno-unused-but-set-variable")
+if(APPLE)
+    mindspore_add_pkg(flatbuffers
+            VER 2.0.0
+            LIBS flatbuffers
+            EXE flatc
+            URL ${REQ_URL}
+            SHA256 ${SHA256}
+            PATCHES ${CMAKE_CURRENT_LIST_DIR}/flatbuffers_clang17.patch
+            CMAKE_OPTION -DFLATBUFFERS_BUILD_TESTS=OFF -DCMAKE_INSTALL_LIBDIR=lib)
 ```
 
-2. At line 66, disable strict mode in CMAKE_OPTION:
-```cmake
-CMAKE_OPTION -DFLATBUFFERS_BUILD_TESTS=OFF -DCMAKE_INSTALL_LIBDIR=lib -DFLATBUFFERS_STRICT_MODE=OFF
-```
+**Why this works**: Directly patching flatbuffers' CMakeLists.txt adds the warning suppression flag where it's actually used (for both library and flatc tool compilation). The patch is applied after download but before build.
 
-**Why this works**: Disabling strict mode and suppressing specific warnings allows flatbuffers to compile without treating these warnings as errors.
+**Verification**: After applying the fix, check the build log for:
+```
+-- CMAKE_CXX_FLAGS: -fPIC -fPIE ... -Wno-unused-but-set-variable -std=c++11 -stdlib=libc++ -Wall -pedantic -Werror -Wextra -Wno-unused-parameter -Wno-unused-but-set-variable
+```
 
 ---
 
@@ -319,6 +369,35 @@ bash build.sh -e cpu -S on -j4
 
 ---
 
+## Error 12: Missing pybind11 Header
+
+**Error Message**:
+```
+mindspore/ops/infer/ops_func_impl/py_func.cc:19:10: fatal error: 'pybind11/pybind11.h' file not found
+   19 | #include <pybind11/pybind11.h>
+      |          ^~~~~~~~~~~~~~~~~~~~~
+1 error generated.
+```
+
+**Root Cause**: pybind11 is required for compiling MindSpore's Python bindings layer (py_func.cc, etc.), but it's not listed in the official build prerequisites. The header file `pybind11/pybind11.h` must be available in the system or conda include paths.
+
+**Solution**: Install pybind11 before compilation:
+```bash
+pip install pybind11 -i https://repo.huaweicloud.com/repository/pypi/simple/
+```
+
+**Important**: If pybind11 is installed **after** CMake has already been configured, you must clean the CMake cache for the new include paths to be detected:
+```bash
+rm -rf build/mindspore/CMakeCache.txt build/mindspore/CMakeFiles
+bash build.sh -e cpu -S on -j4
+```
+
+Simply re-running `build.sh` without clearing the cache will NOT pick up the new pybind11 installation, because CMake reuses the cached configuration.
+
+**Why this works**: pybind11 provides C++ headers that enable seamless Python/C++ interoperability. Installing via pip places the headers in a path that CMake's `FindPython` or pybind11 config module can discover during the configure phase.
+
+---
+
 ## Summary of Required Changes
 
 ### Source Code Files (5 files):
@@ -336,7 +415,7 @@ export LDFLAGS="-Wl,-rpath,/usr/lib -Wl,-rpath,$CONDA_PREFIX/lib"
 
 ### Python Dependencies:
 ```bash
-pip install wheel>=0.46.3
+pip install wheel>=0.46.3 pybind11
 ```
 
 ---
@@ -358,3 +437,5 @@ pip install wheel>=0.46.3
 **Linker option not recognized** → Error 10 (update linker flags)
 
 **Python packaging fails** → Error 11 (upgrade wheel package)
+
+**Missing header file** (`fatal error: 'X.h' file not found`) → Error 12 (install pybind11, clean CMake cache)
