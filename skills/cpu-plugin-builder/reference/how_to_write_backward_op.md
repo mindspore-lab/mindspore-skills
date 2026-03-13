@@ -66,6 +66,39 @@ extern "C" int Neg(int nparam, void **params, int *ndims, int64_t **shapes, cons
 
 ```
 
+#### Case 3: BinopGradCommon Pattern
+
+`BinopGradCommon` is used by binary ops that support broadcasting (e.g. `SubExt`,
+`MulExt`, `DivExt`). It handles reducing the gradient back to the original tensor
+shape after the forward broadcast.
+
+**What it expands to:**
+```
+dx = SumExt(dout, reduce_axes) -> Reshape(dx, x.shape)
+dy = SumExt(dout, reduce_axes) -> Reshape(dy, y.shape)
+```
+
+Concretely, the backward needs two primitives:
+- `SumExt` (or `ReduceSum` in older graphs) — reduces along broadcast dims
+- `Reshape` — restores the original input shape
+
+**Required kernel files:**
+- `op_plugin/ops/kernel/sum_ext.cc`
+- `op_plugin/ops/kernel/reshape.cc`
+
+**Before writing:** check whether these files already exist:
+```bash
+ls op_plugin/ops/kernel/sum_ext.cc op_plugin/ops/kernel/reshape.cc 2>/dev/null
+```
+If both exist, no action needed — the `find_bprop.sh` script also flags this.
+
+If `sum_ext.cc` is missing, implement `SumExt` using `at::sum_out` with the
+provided axes. If `reshape.cc` is missing, implement `Reshape` using
+`at::reshape` (note: Reshape takes the target shape as an integer list input,
+not a tensor attribute).
+
 ### NOTES:
- - if BinopGradCommon() , backward op are SumExt/ReduceSum, so sum_ext.cc and reshape.cc are needed.
- - check `op_plugin/ops/kernel/` first, if ops are already there. no need to write. but need to notify
+ - Always run `find_bprop.sh` first; it auto-detects BinopGradCommon and lists
+   the required files.
+ - Check `op_plugin/ops/kernel/` before writing any backward kernel — if it
+   already exists, skip it and note "existed" in the report.
