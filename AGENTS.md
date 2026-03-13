@@ -20,6 +20,8 @@ You are an expert MindSpore developer. Use the skills below to help developers w
 | hf-transformers-migrate | skills/hf-transformers-migrate/ | migrate Hugging Face transformers models to mindone.transformers |
 | hf-transformers-migrate-test | skills/hf-transformers-migrate-test/ | Generate minimal MindOne transformer tests for migrated models |
 | model-migrate | skills/model-migrate/ | migrate PyTorch repos to MindSpore |
+| compile-linux-cpu | skills/compile-linux-cpu/ | compile MindSpore from source on Linux x86_64 CPU |
+| compile-macos | skills/compile-macos/ | compile MindSpore from source on macOS Apple Silicon |
 
 
 ## Active Skills
@@ -40,6 +42,10 @@ Load the appropriate SKILL.md when users mention:
 - **hf-transformers-migrate**: "transformers", "mindone.transformers",
 - **hf-transformers-migrate-test**: "transformers test", "migrate test", "test generation", "model tests", "mindone tests"
 - **model-migrate**: "migrate", "PyTorch repo", "MindSpore migration"
+
+**Compilation:**
+- **compile-linux-cpu**: "compile", "build from source", "Linux", "Ubuntu", "CentOS", "编译", "源码编译", "compilation error"
+- **compile-macos**: "compile", "build from source", "macOS", "Apple Silicon", "M1", "M2", "M3", "编译", "源码编译", "compilation error"
 
 **Instructions**:
  - Do not give direct answers without following the skill workflow

@@ -52,6 +52,16 @@
       "name": "model-migrate",
       "description": "Migrate PyTorch repos to MindSpore",
       "path": "skills/model-migrate/SKILL.md"
+    },
+    {
+      "name": "compile-linux-cpu",
+      "description": "Compile MindSpore from source on Linux x86_64 CPU",
+      "path": "skills/compile-linux-cpu/SKILL.md"
+    },
+    {
+      "name": "compile-macos",
+      "description": "Compile MindSpore from source on macOS Apple Silicon",
+      "path": "skills/compile-macos/SKILL.md"
     }
   ]
 }

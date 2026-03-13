@@ -30,6 +30,8 @@ Then use slash command:
 /mscode:npu-builder
 /mscode:mindspore-aclnn-operator-devflow
 /mscode:api-helper
+/mscode:compile-linux-cpu
+/mscode:compile-macos
 ```
 
 ### OpenCode
@@ -111,6 +113,13 @@ See [Codex AGENTS guide](https://developers.openai.com/codex/guides/agents-md) f
 | `hf-transformers-migrate-test` | Generate minimal MindOne transformer tests for migrated models |
 | `model-migrate` | Migrate PyTorch repos to MindSpore |
 
+### Compilation
+
+| Skill | Description |
+|-------|-------------|
+| `compile-linux-cpu` | Compile MindSpore from source on Linux x86_64 CPU |
+| `compile-macos` | Compile MindSpore from source on macOS Apple Silicon |
+
 ## Available Commands
 
 ### Operator Development
@@ -134,6 +143,13 @@ See [Codex AGENTS guide](https://developers.openai.com/codex/guides/agents-md) f
 | `/hf-transformers-migrate` | HF transformers migration workflow |
 | `/hf-transformers-migrate-test` | HF transformers test generation for migrated models |
 | `/model-migrate` | PyTorch repo migration workflow |
+
+### Compilation
+
+| Command | Description |
+|---------|-------------|
+| `/compile-linux-cpu` | Linux x86_64 CPU compilation workflow |
+| `/compile-macos` | macOS Apple Silicon compilation workflow |
 
 ## Usage Examples
 

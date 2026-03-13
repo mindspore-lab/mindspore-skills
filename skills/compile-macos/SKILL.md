@@ -27,12 +27,12 @@ Systematic workflow for compiling MindSpore from source on macOS Apple Silicon. 
 
 | Stage | Key Command | Verification |
 |-------|-------------|--------------|
-| Environment | `conda activate <env_name>` | `python --version` shows 3.9-3.12 |
-| Source | `git clone https://gitcode.com/mindspore/mindspore.git` | `build.sh` exists |
-| Dependencies | `conda install cmake=3.22.3 patch autoconf -y` + `pip install ... pybind11` | `cmake --version` |
-| Build | `bash build.sh -e cpu -S on -j8` | Check `output/` directory |
-| Install | `pip install output/mindspore-*.whl` | `import mindspore` works |
-| Verify | `mindspore.run_check()` | Prints success message |
+| 1. Environment (FIRST) | `conda activate <env_name>` | `which python` points to conda env, version 3.9-3.12 |
+| 2. Dependencies | `conda install cmake=3.22.3 patch autoconf -y` + `pip install ... pybind11` | `which cmake` points to conda env |
+| 3. Source | `git clone https://gitcode.com/mindspore/mindspore.git` | `build.sh` exists |
+| 4. Build | `bash build.sh -e cpu -S on -j8` | Check `output/` directory |
+| 5. Install | `pip install output/mindspore-*.whl` | `import mindspore` works |
+| 6. Verify | `mindspore.run_check()` | Prints success message |
 
 **Typical build time:** 30-60 minutes (first build)
 **Disk space required:** 20GB minimum
@@ -42,26 +42,38 @@ Systematic workflow for compiling MindSpore from source on macOS Apple Silicon. 
 
 - **OS**: macOS (Apple Silicon)
 - **Compiler**: Apple Clang
-- **Python**: 3.9, 3.10, 3.11, or 3.12
 - **Disk Space**: At least 20GB
 
 ## Compilation Steps
 
-### Step 1: Set Up Conda Environment
+### Step 1: Set Up and Activate Conda Environment (REQUIRED FIRST)
 
-**First, ask the user to choose:**
-1. Create a new conda environment (ask which Python version: 3.9, 3.10, 3.11, or 3.12)
-2. Use an existing conda environment (ask for environment name)
+**CRITICAL**: All subsequent steps MUST run within an activated conda environment with Python 3.9-3.12.
+
+**First, check if conda is installed:**
+```bash
+conda --version
+```
+
+**Check existing environments:**
+```bash
+conda env list
+```
+
+**MUST ask the user to choose:**
+1. Create a new conda environment (MUST ask which Python version: 3.9, 3.10, 3.11, or 3.12)
+2. Use an existing conda environment (MUST ask for environment name)
 
 **For new environment:**
 ```bash
-# Check conda installation
-conda --version
-
 # Create environment with user-specified Python version
-# Example: conda create -n mindspore_py311 python=3.11 -y
+# Example: conda create -n mindspore_py310 python=3.10 -y
 conda create -n <env_name> python=<version> -y
 conda activate <env_name>
+
+# Verify activation and Python version
+python --version
+which python
 ```
 
 **For existing environment:**
@@ -71,9 +83,45 @@ conda activate <existing_env_name>
 
 # Verify Python version is supported (3.9-3.12)
 python --version
+which python
 ```
 
-### Step 2: Prepare Source Code
+**STOP HERE if environment is not activated.** All following commands assume you are in the activated conda environment.
+
+### Step 2: Check Dependencies (Within Activated Environment)
+
+**PREREQUISITE**: Conda environment must be activated (Step 1).
+
+#### System Tools
+
+**Xcode Command Line Tools** (Required)
+```bash
+xcode-select -p
+# If not installed, prompt user to run:
+# xcode-select --install
+```
+
+**Install build tools via conda** (within activated environment)
+```bash
+# These install into the active conda environment
+conda install cmake=3.22.3 patch autoconf scipy -y
+
+# Verify cmake is from conda environment
+which cmake
+cmake --version
+```
+
+#### Python Packages
+
+```bash
+# Install within activated conda environment
+pip install wheel==0.46.3 PyYAML==6.0.2 numpy==1.26.4 pybind11 -i https://repo.huaweicloud.com/repository/pypi/simple/
+
+# Verify packages are installed in conda environment
+pip list | grep -E "wheel|PyYAML|numpy|pybind11"
+```
+
+### Step 3: Prepare Source Code
 
 **Logic**:
 1. Check if already in MindSpore source directory → Success
@@ -99,29 +147,9 @@ git checkout master
 git pull origin master
 ```
 
-### Step 3: Check Dependencies
+### Step 4: Compile MindSpore (Within Activated Environment)
 
-#### System Tools
-
-**Xcode Command Line Tools** (Required)
-```bash
-xcode-select -p
-# If not installed, prompt user to run:
-# xcode-select --install
-```
-
-**Install build tools**
-```bash
-conda install cmake=3.22.3 patch autoconf scipy -y
-```
-
-#### Python Packages
-
-```bash
-pip install wheel==0.46.3 PyYAML==6.0.2 numpy==1.26.4 pybind11 -i https://repo.huaweicloud.com/repository/pypi/simple/
-```
-
-### Step 4: Compile MindSpore
+**PREREQUISITE**: Conda environment must be activated with all dependencies installed.
 
 Set environment variables:
 
@@ -130,12 +158,18 @@ Set environment variables:
 export MSLIBS_CACHE_PATH=$(pwd)/.mslib
 export CC=/usr/bin/clang
 export CXX=/usr/bin/clang++
+
+# Verify environment
+echo "Python: $(which python)"
+echo "CMake: $(which cmake)"
+echo "CC: $CC"
+echo "CXX: $CXX"
 ```
 
 Execute compilation:
 
 ```bash
-# Ensure in MindSpore source directory
+# Ensure in MindSpore source directory and conda environment is active
 bash build.sh -e cpu -S on -j8
 ```
 
@@ -161,7 +195,13 @@ python -c "import mindspore;print(mindspore.__version__)"
 python -c "import mindspore;mindspore.set_device(device_target='CPU');mindspore.run_check()"
 ```
 
-**CI test suite:** (Required)
+**Expected:**
+```
+MindSpore version: [version number]
+The result of multiplication calculation is correct, MindSpore has been installed on platform [CPU] successfully!
+```
+
+**CI test suite (Ask the user to run or not):**
 ```bash
 cd /path/to/mindspore/tests/st
 pip install pytest torch torchvision torchaudio
@@ -169,15 +209,6 @@ export KMP_DUPLICATE_LIB_OK=TRUE
 
 # Collect tests with markers: (cpu_macos OR platform_arm_cpu) AND level0
 pytest --collect-only -m "(cpu_macos or platform_arm_cpu) and level0" -q 2>/dev/null | grep "::" > /tmp/ci_tests.txt
-
-# Optional: Add missing tests from individual files (comprehensive collection)
-pytest --collect-only -m "(cpu_macos or platform_arm_cpu) and level0" \
-  tensor/test_t.py tensor/test_offload.py \
-  tensor/overload/test_split.py tensor/overload/test_abs.py \
-  tensor/overload/test_select.py tensor/overload/test_floor_divide.py \
-  tensor/overload/test_sum.py tensor/overload/test_inverse.py \
-  ops/cpu/test_fftwithsize.py ops/cpu/test_lp_norm_op.py ops/cpu/test_batch_matmul.py \
-  -q 2>/dev/null | grep "::" >> /tmp/ci_tests.txt
 
 while IFS= read -r test; do
     echo "Running: $test"
@@ -215,6 +246,9 @@ done < /tmp/ci_tests.txt
 
 ## User Interaction Guidelines
 
+- **ALWAYS activate conda environment FIRST**: Before any dependency checks or compilation steps
+- **Verify environment activation**: Use `which python` and `python --version` to confirm
+- **Always check conda first**: Run `conda --version` to verify installation before proceeding
 - **Always ask first**: Whether to create a new conda environment (with Python version 3.9-3.12) or use an existing one
 - Explain each major step before execution
 - Ask user whether to update if source directory exists
