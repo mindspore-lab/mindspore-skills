@@ -26,6 +26,23 @@ MindSpore 相关资料在用户的工作目录下：
 
 注意: 所有源码路径都以 `mindspore/mindspore/` 开头。例如算子 YAML 定义在 `mindspore/mindspore/ops/op_def/yaml/`。
 
+## 参考文档
+
+`references/` 目录包含以下参考文档：
+
+| 文档 | 用途 | 何时使用 |
+|------|------|---------|
+| `architecture.md` | 源码导航地图 | Step 3 定位时查找源码路径 |
+| `issue_patterns.md` | 8 大问题分类与诊断特征 | Step 2 定界时参考 |
+| `misleading_patterns.md` | 10+ 个误导性模式库 | Step 2 定界后必查，避免误判 |
+| `diagnostic_workflow.md` | 详细诊断流程 | 需要深度调试时参考 |
+| `fix_patterns.md` | 常见修复模式与代码模板 | Step 4 修复时参考 |
+| `case_studies.md` | 17 个代表性案例研究 | 全流程参考同类案例 |
+| `case_index.md` | 100 个案例分类索引 | 快速查找历史类似问题 |
+| `operator_profiles.md` | Top 20 高频算子画像 | Step 3 定位高频算子时优先查看 |
+| `testing_guide.md` | 测试框架 2.0 使用指南 | Step 6 补充测试时参考 |
+| `aclnn_guide.md` | ACLNN 算子适配专项 | 处理 Ascend ACLNN 问题时参考 |
+
 ## 端到端工作流
 
 收到算子问题后，按以下步骤逐步执行。每一步都应该产出明确的结论后再进入下一步。
@@ -48,7 +65,9 @@ MindSpore 相关资料在用户的工作目录下：
 
 读取 `references/issue_patterns.md` 获取详细的定界决策依据。
 
-**定界前先搜索历史类似问题**:
+#### 2.1 搜索历史类似问题
+
+**定界前先搜索历史问题单**，避免重复分析：
 
 ```bash
 # 按算子名搜索历史问题单
@@ -62,9 +81,13 @@ rg -l "allclose\|精度" md_files/gitcode/issues/
 # references/case_index.md 包含 100 个 gitcode 问题单的结构化索引
 ```
 
+如果找到类似问题，直接参考其定界结果和修复方案。
+
+#### 2.2 初步定界
+
 **快速定界决策树**:
 
-| 错误关键词 | 组件层 |
+| 错误关键词 | 初步定界 |
 |-----------|--------|
 | allclose / precision / NaN / Inf | 精度/数值 → kernel 或 benchmark |
 | takes N arguments / TypeError / unsupported operand | API/签名 → Python 接口或 YAML |
@@ -74,16 +97,69 @@ rg -l "allclose\|精度" md_files/gitcode/issues/
 | grad_cmp / GradOf / 梯度为零或NaN | 反向传播 → bprop 注册 |
 | device address / output addr / module not callable | 运行时 → runtime |
 
-**⚠️ 常见误导性定界**:
-- `allclose` 失败 + 梯度为零 → 实际是 bprop 缺陷，不是 kernel 精度 (参考 CS-001)
-- `AbstractProblem` → 先检查 IR 中是否有 DeadNode，可能是编译器 pass 问题 (参考 CS-009)
-- 精度不一致 → 先确认基准框架版本是否变化 (参考 CS-002)
+#### 2.3 误导模式检查 ⚠️
 
-如果错误信息不足以直接定界，通过对比实验缩小范围：
-- Graph vs PyNative
-- Ascend vs CPU
-- fp32 vs fp16
-- 静态 shape vs 动态 shape
+**关键步骤**：初步定界后，必须检查是否匹配误导模式。
+
+读取 `references/misleading_patterns.md` 获取完整的误导模式库。
+
+**快速检查清单**：
+
+```
+1. 梯度为零？ → 检查 M-001 (可能是 bprop Select，而非 kernel 精度)
+2. AbstractProblem？ → 检查 M-002 (可能是编译器 pass，而非 Shape 推导)
+3. 小幅精度偏差 (< 1e-3)？ → 检查 M-003 (可能是 CANN/基准版本变更)
+4. DID NOT RAISE？ → 检查 M-004 (可能是校验被绕过)
+5. 偶现 core dump？ → 检查 M-005 (可能是多线程竞态)
+6. 导入错误？ → 检查 M-006 (可能是模块重构)
+7. 仅特定平台？ → 检查 M-007 (可能是平台差异触发不同路径)
+8. 编译失败？ → 检查 M-008 (可能是 CANN 版本兼容性)
+9. scalar type invalid？ → 检查 M-009 (可能是类型覆盖不全)
+10. keyword_arg 错误？ → 检查 M-010 (可能是 Morph 时序问题)
+```
+
+**如果匹配误导模式**：
+1. 阅读该模式的"验证实验"章节
+2. 执行验证实验确认实际根因
+3. 如果验证通过，按"正确定界"路径处理
+4. 如果验证失败，继续初步定界
+
+**常见误导案例**：
+- `allclose` 失败 + 梯度为零 → 实际是 bprop 缺陷 (M-001, CS-001)
+- `AbstractProblem` → 实际是编译器 pass 问题 (M-002, CS-009)
+- 精度不一致 (< 1e-3) → 实际是 CANN/基准版本变更 (M-003, CS-002/CS-005)
+
+#### 2.4 对比实验验证
+
+如果错误信息不足以直接定界，或误导模式检查不确定，通过对比实验缩小范围：
+
+```python
+# 1. 模式对比
+context.set_context(mode=context.GRAPH_MODE)  # vs PYNATIVE_MODE
+
+# 2. 后端对比
+context.set_context(device_target="Ascend")  # vs "CPU"
+
+# 3. dtype 对比
+input_fp32 = Tensor(data, dtype=mindspore.float32)  # vs float16
+
+# 4. shape 对比
+static_shape = (2, 3, 4)  # vs dynamic_shape with -1
+```
+
+根据实验结果调整定界。
+
+#### 2.5 最终定界
+
+综合以上步骤，给出最终定界结果：
+
+```
+定界结果: [组件层] - [具体组件]
+判断依据:
+1. [依据 1]
+2. [依据 2]
+3. [依据 3]
+```
 
 ### Step 3: 定位
 
