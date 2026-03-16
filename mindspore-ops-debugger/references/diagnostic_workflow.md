@@ -12,6 +12,7 @@
 8. [根因分析报告模板](#8-根因分析报告模板)
 9. [环境信息收集](#9-环境信息收集)
 10. [调试工具与命令](#10-调试工具与命令)
+11. [多步推理示例](#11-多步推理示例定界被误导后如何修正)
 
 ---
 
@@ -407,3 +408,78 @@ rg -l "$op_name" mindspore/mindspore/ops/
 rg -l "$op_name" mindspore/mindspore/ccsrc/frontend/expander/
 rg -l "$op_name" mindspore/mindspore/python/mindspore/ops/
 ```
+
+---
+
+## 11. 多步推理示例：定界被误导后如何修正
+
+真实案例中，初始定界方向经常被错误信息误导。以下示例展示如何通过二次判断修正定界。
+
+### 示例 A: ops.pow 精度失败 → 实际是 bprop 缺陷 (CS-001, #41932)
+
+**初始信息**:
+```
+AssertionError: data_expected_std:[14.697707] data_me_error:[0.] loss:[14.697707]
+```
+
+**第一次定界（错误）**: 包含 `allclose` → 精度/数值问题 → 检查 kernel 精度
+
+**发现矛盾**: 正向精度正常，仅反向梯度为零 → 精度问题不在 kernel
+
+**修正定界**: 梯度为零 → 反向传播 → 检查 bprop 实现
+
+**根因**: 反向图中 Select 操作在 GE 上导致内存踩踏，梯度被覆盖为零
+
+**教训**: `allclose` 失败不一定是 kernel 精度问题。先区分正向/反向，再定界。
+
+---
+
+### 示例 B: PixelShuffle AbstractProblem → 实际是编译器 pass 缺失 (CS-009, #41973)
+
+**初始信息**:
+```
+RuntimeError: Invalid abstract;AbstractProblem(Value: DeadNode, ...)
+at control_node_parser.cc:362 FetchOutputSizeByNode
+```
+
+**第一次定界（错误）**: 包含 `AbstractProblem` → Shape 推导问题 → 检查 InferShape
+
+**发现矛盾**: 静态 shape 正常，仅动态 shape 出错；InferShape 逻辑无问题
+
+**修正定界**: 错误信息含 `DeadNode` → 编译器 IR 问题 → 导出 IR 检查
+
+**根因**: 前端脚本变化产生 DeadNode，缺少 switch_simplify pass 清理
+
+**教训**: `AbstractProblem` 可能是 Shape 推导，也可能是编译器 pass 遗留的 DeadNode。先导出 IR 确认。
+
+---
+
+### 示例 C: nn.Adam 精度不一致 → 实际是基准环境差异 (CS-002, #41934)
+
+**初始信息**: MindSpore 与 TensorFlow 结果不一致
+
+**第一次定界（错误）**: 精度不一致 → MindSpore kernel 精度问题 → 检查 Adam kernel
+
+**发现矛盾**: 对比 TF 2.15 结果正常，仅 TF 2.18 不一致
+
+**修正定界**: 框架版本差异 → 基准环境问题 → 检查 TF 代码
+
+**根因**: TF 2.18 Dense 层未传 dtype 时自动升精度，基准代码需显式指定 dtype
+
+**教训**: 精度不一致时，先确认基准框架版本是否变化，再排查 MindSpore 侧。
+
+---
+
+### 示例 D: 多线程 core dump → 双重根因 (CS-013, #41935)
+
+**初始信息**: `SIGSEGV in std::_Rb_tree_insert_and_rebalance`
+
+**第一次定界**: 堆栈指向 set 插入 → 线程安全问题 → 加锁
+
+**发现矛盾**: 加锁后仍偶现，且仅在训练场景出现
+
+**修正定界**: 训练场景误入推理路径 → optional 判断错误 → 双重根因
+
+**根因**: ① optional 判断错误导致训练误入推理路径；② set 无锁并发写
+
+**教训**: 偶现 core dump 可能有多个根因叠加，修复一个后需继续验证。

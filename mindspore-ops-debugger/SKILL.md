@@ -48,6 +48,20 @@ MindSpore 相关资料在用户的工作目录下：
 
 读取 `references/issue_patterns.md` 获取详细的定界决策依据。
 
+**定界前先搜索历史类似问题**:
+
+```bash
+# 按算子名搜索历史问题单
+rg -l "{op_name}" md_files/gitcode/issues/
+
+# 按错误特征搜索
+rg -l "AbstractProblem\|DeadNode" md_files/gitcode/issues/
+rg -l "allclose\|精度" md_files/gitcode/issues/
+
+# 查看 case_index.md 中的分类索引
+# references/case_index.md 包含 100 个 gitcode 问题单的结构化索引
+```
+
 **快速定界决策树**:
 
 | 错误关键词 | 组件层 |
@@ -60,6 +74,11 @@ MindSpore 相关资料在用户的工作目录下：
 | grad_cmp / GradOf / 梯度为零或NaN | 反向传播 → bprop 注册 |
 | device address / output addr / module not callable | 运行时 → runtime |
 
+**⚠️ 常见误导性定界**:
+- `allclose` 失败 + 梯度为零 → 实际是 bprop 缺陷，不是 kernel 精度 (参考 CS-001)
+- `AbstractProblem` → 先检查 IR 中是否有 DeadNode，可能是编译器 pass 问题 (参考 CS-009)
+- 精度不一致 → 先确认基准框架版本是否变化 (参考 CS-002)
+
 如果错误信息不足以直接定界，通过对比实验缩小范围：
 - Graph vs PyNative
 - Ascend vs CPU
@@ -69,6 +88,15 @@ MindSpore 相关资料在用户的工作目录下：
 ### Step 3: 定位
 
 读取 `references/architecture.md` 获取源码导航信息，快速定位到具体的源码文件。
+
+**先查算子画像**:
+
+如果算子是高频问题算子，先查 `references/operator_profiles.md` 获取已知问题和源码路径：
+
+```bash
+# 检查算子是否在画像中
+grep -l "{op_name}" references/operator_profiles.md
+```
 
 **按组件定位**:
 
@@ -99,6 +127,17 @@ rg -l "{OpName}" mindspore/mindspore/ops/ mindspore/mindspore/ccsrc/frontend/exp
 ### Step 4: 修复
 
 读取 `references/fix_patterns.md` 参考同类修复模式。
+
+**先查同类历史案例**:
+
+```bash
+# 在 case_studies.md 中查找同类案例
+grep -A 10 "{error_keyword}" references/case_studies.md
+
+# 在 gitcode 问题单中搜索同类根因
+rg -l "Appearance & Root Cause" md_files/gitcode/issues/ | \
+  xargs grep -l "{keyword}"
+```
 
 修复原则：
 - 最小化变更，只修改必要的代码
@@ -156,10 +195,26 @@ rg -l "{op_name}" md_files/gitcode/ md_files/gitee/
 rg -l "AbstractProblem" md_files/gitcode/
 rg -l "精度" md_files/gitcode/
 
+# 按根因关键词搜索 (仅 gitcode 有结构化根因)
+rg -l "Appearance & Root Cause" md_files/gitcode/issues/ | \
+  xargs grep -l "{keyword}"
+
+# 按状态过滤 (DONE = 已解决)
+rg -l "Issue 状态" md_files/gitcode/issues/ | \
+  xargs grep -l "DONE"
+
+# 按引入类型搜索
+rg "引入类型：CANN升级" md_files/gitcode/issues/
+rg "引入类型：特性合入引入" md_files/gitcode/issues/
+
 # 按算子名搜索 (在源码中)
 rg -l "{OpName}" mindspore/mindspore/ops/op_def/
 rg -l "{OpName}" mindspore/mindspore/ops/kernel/
 ```
+
+**结构化案例索引**: `references/case_index.md` 包含 100 个 gitcode 问题单的分类索引表，可快速定位同类问题。
+
+**深度案例研究**: `references/case_studies.md` 包含 17 个代表性案例的完整分析，覆盖全部 8 个问题分类。
 
 ## 输出格式
 
@@ -198,3 +253,42 @@ rg -l "{OpName}" mindspore/mindspore/ops/kernel/
 - 新的测试技巧
 
 这些经验会帮助你更快地处理后续类似问题。
+
+## 经验固化
+
+每次解决新问题后，检查是否需要更新以下文档：
+
+### 检查清单
+
+1. **`references/case_studies.md`**: 是否是新的代表性案例？
+   - 覆盖了新的问题分类或子类型？
+   - 有误导性定界过程值得记录？
+
+2. **`references/fix_patterns.md`**: 是否有新的修复模式？
+   - 修复方式是否与现有模式不同？
+   - 是否需要添加关联 Issue？
+
+3. **`references/operator_profiles.md`**: 是否需要更新算子画像？
+   - 发现了新的已知问题？
+   - 找到了更准确的源码路径？
+
+4. **`references/issue_patterns.md`**: 是否需要更新决策树？
+   - 发现了新的误导性关键词？
+   - 需要添加新的二级分支？
+
+5. **`references/case_index.md`**: 是否需要更新索引？
+   - 新问题单已加入 `md_files/gitcode/issues/`？
+   - 运行 `python3 scripts/extract_cases.py` 重新提取
+
+### 更新命令
+
+```bash
+# 重新提取 gitcode 案例
+python3 scripts/extract_cases.py
+
+# 重新生成案例索引
+python3 -c "
+import json
+# ... 参考 scripts/extract_cases.py 中的 main() 逻辑
+"
+```

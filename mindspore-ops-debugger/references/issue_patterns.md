@@ -65,6 +65,32 @@
 4. 检查 dtype: 输入输出的 dtype 是否预期
 5. 检查 CANN: 对比不同 CANN 版本的结果
 
+### 真实案例
+
+- **CS-001 (#41932)**: ops.pow 反向梯度为零 — 反向 Select 操作导致 GE 内存踩踏
+- **CS-002 (#41934)**: nn.Adam 与 TF 不一致 — TF 2.18 dtype 自动提升行为变化
+- **CS-003 (#41931)**: mint.nn.Linear 偶现精度 — 大 k 轴 MatMul 累加误差
+- **CS-004 (#41933)**: CPU trace fp16 精度 — CPU 上 fp16 累加精度不足
+- **CS-005 (#41977)**: DeepSeek loss 偏差 — CANN matmul 变更导致
+
+### 二级定界决策
+
+```
+allclose 失败
+├─ 输出全零 → 反向图结构问题 (Select/DeadNode)，参考 CS-001
+├─ 输出全 NaN → dtype 溢出或未初始化，检查 fp16 计算链路
+├─ 小幅偏差 (< 1e-3) → 累加精度或 CANN 变更，参考 CS-003/CS-005
+└─ 大幅偏差 → 逻辑错误或基准环境差异，参考 CS-002
+```
+
+### ⚠️ 误导性关键词
+
+| 表面现象 | 实际根因 | 参考 |
+|---------|---------|------|
+| allclose 精度失败 | bprop Select 缺陷 | CS-001 |
+| 精度不一致 | 基准框架版本差异 | CS-002 |
+| fp16 精度问题 | CPU kernel 未做精度提升 | CS-004 |
+
 ---
 
 ## 3. API 与签名不一致
@@ -98,6 +124,22 @@
 2. 最小复现: 精简调用参数组合
 3. 检查 `functional_overload.py` 中的分发逻辑
 4. 检查 `ops/api_def/*.yaml` 中的 `kwonlyargs` 定义
+
+### 真实案例
+
+- **CS-006 (#41971)**: scatternd PyNative 参数校验丢失 — ConvertSequence 自动转换 list→tuple
+- **CS-007 (#42116)**: tensor.mul 类型校验丢失 — deprecated 分支意外放宽约束
+- **CS-008 (#42227)**: FusedAdamW amsgrad 参数冲突 — 延迟初始化未考虑动态添加
+
+### 二级定界决策
+
+```
+TypeError / 参数错误
+├─ "DID NOT RAISE" → 校验被绕过，检查 ConvertSequence 和 deprecated 分支
+├─ "takes N arguments" → 签名变更，对比 YAML 定义
+├─ "unsupported operand" → 内部状态未初始化，检查延迟初始化逻辑
+└─ "module not callable" → 导入错误，检查 import 路径
+```
 
 ---
 
@@ -133,6 +175,17 @@
 3. 测试静态 shape 是否正常，定位是否为动态 shape 特有问题
 4. 检查是否在 `jacfwd`/`jacrev` 等变换下出现
 
+### 真实案例
+
+- **CS-009 (#41973)**: PixelShuffle AbstractProblem — 表面是 Shape 错误，实际是编译器 pass 缺失导致 DeadNode 残留
+
+### ⚠️ 误导性关键词
+
+| 表面现象 | 实际根因 | 参考 |
+|---------|---------|------|
+| AbstractProblem | 编译器 pass 缺失 (DeadNode) | CS-009 |
+| Invalid abstract | 可能是 Shape 推导，也可能是 IR 节点残留 | — |
+
 ---
 
 ## 5. 编译器与 IR 问题
@@ -166,6 +219,12 @@
 2. 搜索 IR 中的 `DeadNode`、`ValueProblem` 等异常节点
 3. 检查相关 pass 是否覆盖该模式
 4. 定位 `ccsrc/frontend/` 中的相关源码
+
+### 真实案例
+
+- **CS-010 (#41959)**: Morph *args/**kwargs — 清理 pass 时序问题，keyword_arg 残留
+- **CS-011 (#41967)**: acosh O1 dump 报错 — IR dump 工具未覆盖 fp16 类型
+- **CS-009 (#41973)**: PixelShuffle DeadNode — 需新增 switch_simplify pass
 
 ---
 
@@ -203,6 +262,11 @@
 4. 对比 CPU/GPU/Ascend 行为是否一致
 5. 检查 `Init()`/`Resize()`/`Launch()` 各阶段的资源管理
 
+### 真实案例
+
+- **CS-012 (#41948)**: CANN 版本不兼容 — aclrtDevResLimitType 符号缺失，需编译宏隔离
+- **CS-013 (#41935)**: 多线程 core dump — optional 误用 + set 无锁并发写入
+
 ---
 
 ## 7. 反向传播与梯度问题
@@ -238,6 +302,11 @@
 4. 导出反向 IR 检查图结构
 5. 测试 fp32 下梯度是否正确，排除精度问题
 
+### 真实案例
+
+- **CS-001 (#41932)**: ops.pow 梯度为零 — 反向 Select 操作在 GE 上内存踩踏
+- **CS-014 (#41954)**: expm1/log1p complex 梯度崩溃 — ScalarToTensor 不支持 complex 类型
+
 ---
 
 ## 8. 运行时与 PyNative 问题
@@ -271,6 +340,11 @@
 3. 检查堆栈中的 runtime 组件
 4. 最小化复现，排除网络复杂度影响
 
+### 真实案例
+
+- **CS-015 (#41943)**: Cell 属性修改 mac arm 报错 — 平台线程数差异触发不同执行路径
+- **CS-016 (#42129)**: lazy_inline 导入错误 — 模块重构后 import 路径变更
+
 ---
 
 ## 9. 性能退化
@@ -299,24 +373,45 @@
 │
 ├─ 包含 "allclose" / "precision" / "NaN" / "Inf"
 │   → 【精度/数值】读 §2
+│   ├─ 输出全零 → 反向图结构问题 (bprop Select/DeadNode)
+│   ├─ 输出全 NaN → dtype 溢出，检查 fp16 计算链路
+│   ├─ 小幅偏差 (< 1e-3) → 累加精度或 CANN 变更
+│   └─ 大幅偏差 → 逻辑错误或基准环境差异
 │
 ├─ 包含 "takes N arguments" / "TypeError" / "unsupported operand"
 │   → 【API/签名】读 §3
+│   ├─ "DID NOT RAISE" → 校验被绕过 (ConvertSequence/deprecated 分支)
+│   ├─ "takes N arguments" → 签名变更，对比 YAML
+│   └─ "unsupported operand" → 内部状态未初始化
 │
 ├─ 包含 "shape" / "broadcast" / "AbstractProblem" / "Invalid abstract"
 │   → 【Shape 推导】读 §4
+│   ├─ 含 "DeadNode" → 实际是编译器 pass 问题，读 §5
+│   ├─ 仅动态 shape → Infer 动态 shape 处理
+│   └─ 静态也出错 → 广播规则或 Rank 不匹配
 │
 ├─ 包含 "DeadNode" / "FakeBprop" / "keyword_arg" / "control_node_parser"
 │   → 【编译器/IR】读 §5
+│   ├─ "keyword_arg" → Morph 展开时序问题
+│   ├─ "Unknown scalar type" → IR dump 类型覆盖不全
+│   └─ "FakeBprop" → 新 IR 节点缺少 bprop 注册
 │
 ├─ 包含 "segmentation fault" / "core dump" / "Error building" / "FAILED: *.o"
 │   → 【Kernel 实现】读 §6
+│   ├─ "std::_Rb_tree" → 多线程并发写入，检查锁
+│   ├─ "Error building" → CANN 版本兼容性，检查编译宏
+│   └─ 偶现 → 线程安全 + 执行路径判断
 │
 ├─ 包含 "grad_cmp" / "GradOf" / 梯度异常
 │   → 【反向传播】读 §7
+│   ├─ "scalar type invalid" → 底层工具函数类型覆盖不全
+│   └─ 梯度为零 → bprop 中的 Select 或 SetUnusedInputs 错误
 │
 ├─ 包含 "device address" / "output addr" / "module not callable"
 │   → 【运行时】读 §8
+│   ├─ "module not callable" → 导入路径错误
+│   ├─ "output addr not exist" → any 类型延迟地址创建
+│   └─ 仅特定平台 → 平台差异触发不同执行路径
 │
 └─ 超时 / 性能指标异常
     → 【性能退化】读 §9

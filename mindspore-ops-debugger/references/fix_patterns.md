@@ -19,6 +19,8 @@
 
 **问题**: 基准框架 (TF/Torch) 版本升级导致 dtype 自动提升行为变化。
 
+**关联 Issue**: #41934 (nn.Adam), Case CS-002
+
 **修复**: 在基准比对代码中显式指定 dtype。
 
 ```python
@@ -37,6 +39,8 @@ class TestAdam(OpsFactory):
 
 **问题**: backward 中 Select 操作在 GE 上导致内存异常。
 
+**关联 Issue**: #41932 (ops.pow), Case CS-001
+
 **修复**: 重写反向逻辑避免使用 Select。
 
 ```cpp
@@ -51,6 +55,8 @@ auto dx = ib->Mul(grad_x, mask);
 ### 1.3 切换到 mint 接口
 
 **问题**: 旧模型使用 ops 接口导致精度或随机数不一致。
+
+**关联 Issue**: #42126 (mindone I2VGenXLUNet), Case CS-005
 
 **修复**: 将 `mindspore.ops` 调用替换为 `mindspore.mint`。
 
@@ -67,6 +73,8 @@ output = mint.sigmoid(x)
 ### 1.4 CANN 变更后重新基线
 
 **问题**: CANN 升级后算子计算结果变化，但结果仍在合理范围内。
+
+**关联 Issue**: #41977 (DeepSeek loss), Case CS-005
 
 **修复**: 更新基线数据 (baseline)，调整 tolerance。
 
@@ -125,6 +133,8 @@ if (!IsDynamic(dim)) {
 ### 2.3 添加编译 Pass 清理无效节点
 
 **问题**: IR 中残留 DeadNode 导致后端解析失败。
+
+**关联 Issue**: #41973 (PixelShuffle), Case CS-009
 
 **修复**: 添加 switch_simplify 等优化 pass。
 
@@ -190,6 +200,8 @@ MS_EXCEPTION(RuntimeError) << "group not initialized";
 
 **问题**: PyNative 下 list 被自动转为 tuple。
 
+**关联 Issue**: #41971 (scatternd), Case CS-006
+
 **修复**: 在 ConvertSequence 中区分 list 和 tuple。
 
 ```cpp
@@ -208,6 +220,8 @@ if (py::isinstance<py::list>(input)) {
 
 **问题**: 代码使用了新 CANN 版本的 API，老版本编译失败。
 
+**关联 Issue**: #41948 (自定义算子), Case CS-012
+
 **修复**: 用宏隔离版本差异。
 
 ```cpp
@@ -224,6 +238,8 @@ if (py::isinstance<py::list>(input)) {
 ### 4.2 修复线程安全
 
 **问题**: 多线程访问共享数据结构导致 crash。
+
+**关联 Issue**: #41935 (自动并行 core dump), Case CS-013
 
 **修复**: 加锁或使用原子操作。
 
@@ -414,6 +430,8 @@ REG_BPROP_BUILDER("Op").SetBody(BODYFUNC(ib) {
 ### 7.1 修复导入错误
 
 **问题**: 导入了 module 而非 callable。
+
+**关联 Issue**: #42129 (lazy_inline), Case CS-016
 
 **修复**: 修正 import 语句。
 
