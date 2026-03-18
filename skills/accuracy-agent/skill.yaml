@@ -1,0 +1,78 @@
+schema_version: "1.0.0"
+name: "accuracy-agent"
+display_name: "Accuracy Diagnosis Agent"
+description: "Diagnose accuracy regressions, wrong-result issues, numerical drift, and cross-platform mismatch in MindSpore workflows after successful execution."
+version: "0.1.0"
+
+entry:
+  type: "manual"
+  path: "SKILL.md"
+
+inputs:
+  - name: "baseline_type"
+    type: "enum"
+    required: false
+    default: "none"
+    choices:
+      - "pytorch_gpu"
+      - "pytorch_ascend"
+      - "mindspore_previous_run"
+      - "mindspore_previous_version"
+      - "mindspore_baseline_model"
+      - "none"
+    description: "Trusted baseline source, if known."
+  - name: "symptom_type"
+    type: "enum"
+    required: false
+    default: "unknown"
+    choices:
+      - "step1_loss_mismatch"
+      - "later_divergence"
+      - "nan_inf_nonfatal"
+      - "cross_platform_mismatch"
+      - "eval_regression"
+      - "single_sample_mismatch"
+      - "unknown"
+    description: "Primary symptom category, if already known."
+  - name: "model_name"
+    type: "string"
+    required: false
+    description: "Model or project name under diagnosis."
+  - name: "metric_name"
+    type: "string"
+    required: false
+    description: "Metric affected by the regression, such as loss, top1, BLEU, or perplexity."
+  - name: "device"
+    type: "enum"
+    required: false
+    choices: ["ascend", "gpu", "cpu"]
+    description: "Target device platform."
+  - name: "distributed"
+    type: "boolean"
+    required: false
+    description: "Whether the comparison involves distributed training or inference."
+  - name: "log_path"
+    type: "path"
+    required: false
+    description: "Path to logs, dumps, or comparison outputs if available."
+
+outputs:
+  report_schema: "skills/_shared/contract/report.schema.json"
+  out_dir_layout: "runs/<run_id>/out/"
+
+permissions:
+  network: "none"
+  filesystem: "read"
+
+dependencies:
+  tools:
+    - "bash"
+    - "rg"
+  python: []
+
+tags:
+  - "mindspore"
+  - "diagnosis"
+  - "accuracy"
+  - "numerical"
+  - "training"

@@ -1,0 +1,23 @@
+{
+  "skill_name": "accuracy-agent",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "My MindSpore training finishes, but the top-1 accuracy dropped after I migrated from PyTorch. Step1 loss is already different from the PyTorch baseline on the same weights and the same batch. How should I debug this?",
+      "expected_output": "Recognizes a step1 loss mismatch, aligns the comparison setup first, treats the problem as a forward-path issue, and recommends a staged tensor comparison instead of generic tuning.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "Step1 loss matches our previous good MindSpore run, but after about 80 steps the local norm and loss curve drift and the final evaluation is worse. I need a practical diagnosis plan.",
+      "expected_output": "Routes to the later-divergence branch, focuses on gradients, one-step updates, optimizer settings, and distributed differences, and uses a validation ladder.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "Training stops at step 2 with a RuntimeError and then I see NaN in the log. Can the accuracy-agent help me diagnose it?",
+      "expected_output": "Rejects the case as a pure accuracy entry point because execution failed, asks for failure evidence or redirects to failure diagnosis instead of using the NaN branch.",
+      "files": []
+    }
+  ]
+}
