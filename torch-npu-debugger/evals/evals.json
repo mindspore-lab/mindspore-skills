@@ -1,0 +1,23 @@
+{
+  "skill_name": "torch-npu-debugger",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "我在用 torch_npu 跑一个模型，执行 torch.add 的时候报错 NotImplementedError: Could not run 'aten::add.Tensor' with arguments from the 'PrivateUse1' backend。torch_npu 版本是 2.1，CANN 是 8.0.RC1，Ascend 910B。帮我定位一下问题。",
+      "expected_output": "应该按照6步工作流分析：识别为算子注册/分发问题，搜索 TORCH_LIBRARY_IMPL 注册，检查 dispatch key，给出修复方向",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "torch_npu 上跑 sigmoid 算子，fp16 输入时结果和 CPU 上的 float32 结果差异很大，allclose 失败。max diff 大概 0.05。正向有问题，反向也不对。环境是 Ascend 910B + CANN 8.0。代码在 /Users/claw/code/torch_npu。",
+      "expected_output": "应该识别为精度问题，读取 issue_patterns.md 定界，搜索 sigmoid 的 opapi 实现，分析 fp16 精度处理，建议 dtype 提升修复",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "编译 torch_npu 的时候报错 undefined symbol: aclnnBatchNormGetWorkspaceSize，我的 CANN 版本是 7.0。之前用 CANN 8.0 编译是没问题的。怎么解决？",
+      "expected_output": "应该识别为 ACLNN 适配问题，解释 DO_COMPATIBILITY 机制，建议添加 fallback 到 aclops 实现，给出具体修复代码模板",
+      "files": []
+    }
+  ]
+}
