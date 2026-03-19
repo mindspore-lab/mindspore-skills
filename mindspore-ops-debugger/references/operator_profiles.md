@@ -325,3 +325,28 @@
 **快速诊断**:
 - 与 TF 不一致 → 先检查 TF 版本，确认基准代码显式指定 dtype
 - TypeError += NoneType → 检查 amsgrad 状态初始化
+
+---
+
+## trunc / fix
+
+| 字段 | 内容 |
+|------|------|
+| YAML | `ops/op_def/yaml/trunc_op.yaml` |
+| Infer | `ops/infer/ops_func_impl/trunc.h` (继承 `EltwiseOpFuncImpl`) |
+| Kernel (Ascend) | `LAUNCH_ACLNN(aclnnTrunc)` — 自动生成，`pyboost_ascend_ops_2.cc` |
+| Kernel (CPU) | `ops/kernel/cpu/native/trunc_cpu_kernel.cc` — 使用 `std::trunc()` |
+| Kernel (GPU) | `ops/kernel/gpu/cuda/math/elementwise_ops_gpu_kernel.cc` |
+| ACLNN 注册 | `aclnn_kernel_register_auto.cc`: `MS_ACLNN_COMMON_KERNEL_FACTORY_REG(Trunc, aclnnTrunc, 2)` |
+| Python API | `mint.trunc` → `ops.auto_generate.trunc_op`; `mint.fix` → `mint.trunc` 的别名 |
+| numpy API | `numpy.fix` → 用 `floor` + `ceil` + `select` 组合实现（不依赖 Trunc 算子） |
+
+**已知问题**:
+- #IC3M0Q: dtype 支持不对齐 — MindSpore 不支持 int8/int16/uint8，PyTorch 支持
+- #42295: 910A 上 `aclnnTrunc` 对大数值返回 INT32_MAX — aclnn 内部 float→int32 溢出（CANN 缺陷）
+- `aclnnTrunc` 不支持 float64 (DT_DOUBLE)，仅支持 DT_FLOAT/DT_FLOAT16/DT_BFLOAT16
+
+**快速诊断**:
+- 返回值为 2.14748e+09 或 -2.14748e+09 → INT32 溢出，检查 aclnn 平台实现 (M-012)
+- dtype 不支持报错 → 检查 aclnnTrunc 支持的 dtype 列表
+- 910A vs 910B 结果不一致 → 平台特有的 aclnn 实现差异

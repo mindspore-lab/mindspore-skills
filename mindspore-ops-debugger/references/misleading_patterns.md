@@ -507,6 +507,155 @@ grep -n "keyword_arg" ir_dump/*.ir
 
 ---
 
+## M-011: complex64 NaN 但 complex128 正常
+
+### 表面现象
+```
+Tensor.reciprocal([inf+0j, inf+0j], complex64) → [nan+nanj, nan+nanj]
+Tensor.reciprocal([inf+0j, inf+0j], complex128) → [0+0j, 0+0j]
+```
+
+### 常见误判
+定界到 **MindSpore Kernel 实现缺陷** 或 **InferValue 常量折叠错误**
+
+### 正确定界
+**CANN aclnn 算子缺陷** — aclnn 内部对 complex64 (float) 的特殊值处理有 bug
+
+### 判断依据
+1. **标量 shape 正确，非标量 shape 错误** → 标量走 InferValue 常量折叠（C++ 标准库），非标量走 aclnn kernel
+2. **complex128 正确，complex64 错误** → 底层浮点精度相关，float 的 inf² 溢出处理与 double 不同
+3. **torch_npu 有完全相同的行为** → 非 MindSpore 问题，是 aclnn 共性缺陷
+
+### 验证实验
+```python
+# 三方对比: PyTorch CPU vs torch_npu vs MindSpore
+# PyTorch CPU (基准): 0+0j
+# torch_npu: nan+nanj  ← 与 MindSpore 一致
+# MindSpore: nan+nanj
+# 结论: aclnn 算子 bug
+```
+
+### 根因类型
+- **aclnn 算子对 complex64 inf 的内部计算** `conj(x)/|x|²` 中 float 精度 inf²=inf, inf/inf=nan
+- **complex128 (double) 路径实现不同**，无此问题
+
+### 修复模式
+- 提交 CANN 问题单修复 aclnn 算子
+- MindSpore 侧无需修改（与 torch_npu 行为一致）
+
+### 参考案例
+- **CS-018 (#42294)**: Reciprocal complex64 inf → NaN
+
+---
+
+## M-012: 取整算子返回 INT32_MAX / INT32_MIN
+
+### 表面现象
+```
+mint.fix(Tensor(1.e+20, dtype=float32)) → Tensor(2.14748e+09)  # = 2^31-1 = INT32_MAX
+mint.trunc(Tensor(-1.e+20, dtype=float32)) → Tensor(-2.14748e+09)  # = -2^31 = INT32_MIN
+```
+
+### 常见误判
+定界到 **MindSpore 类型推导** 或 **PyBoost 类型转换** — 怀疑 MindSpore 侧做了 float→int32 的错误转换
+
+### 正确定界
+**CANN aclnn 算子缺陷（平台特有）** — aclnn 算子内部实现在特定芯片型号上使用了 float→int32→float 的计算路径
+
+### 判断依据
+1. **返回值恰好是 2^31-1 或 -2^31** → float→int32 溢出的标志性特征，不可能是精度误差
+2. **仅特定芯片型号出现** → 910A 出现但 910B 正常，说明不同芯片的 aclnn 实现不同
+3. **MindSpore 侧代码链路无任何类型转换** → PyBoost 直接调用 `LAUNCH_ACLNN(aclnnTrunc, ...)`，无中间转换
+4. **CPU kernel 使用 `std::trunc()` 结果正确** → 问题仅在 Ascend 特定平台
+
+### 验证实验
+```python
+# 1. 检查返回值是否为 INT32 边界值
+import numpy as np
+result = mint.fix(Tensor(1.e+20, dtype=ms.float32))
+assert result.asnumpy() == np.float32(np.iinfo(np.int32).max)  # 2147483647
+
+# 2. CPU 对比
+ms.set_context(device_target="CPU")
+result_cpu = mint.fix(Tensor(1.e+20, dtype=ms.float32))  # 正确: 1e+20
+
+# 3. torch_npu 对比（同一台机器）
+import torch, torch_npu
+r = torch.fix(torch.tensor(1.e+20).npu())  # 如果也是 INT32_MAX → aclnn bug
+```
+
+### 根因类型
+- **aclnn 算子在特定芯片上的实现路径** 使用了 float→int32→float 的截断方式，而非直接在浮点域操作
+- **int32 范围仅 ±2.1e9**，远小于 float32 可表示的最大整数 (~3.4e38)
+
+### 修复模式
+- 提交 CANN 问题单修复对应芯片的 aclnn 算子实现
+- 如需 MindSpore 侧 workaround，可参考 `numpy.fix` 的实现：用 `floor` + `ceil` + `select` 组合替代 `trunc`
+
+### 参考案例
+- **CS-019 (#42295)**: mint.fix 大数值返回 INT32_MAX（910A 特有）
+
+---
+
+## M-013: sign/特殊值函数仅特定 dtype 返回 NaN
+
+### 表面现象
+```python
+mint.sign(Tensor(float('nan'), dtype=ms.float64))  # → nan（错误）
+mint.sign(Tensor(float('nan'), dtype=ms.float32))  # → 0（正确）
+mint.sign(Tensor(float('nan'), dtype=ms.float16))  # → 0（正确）
+```
+
+### 常见误判
+定界到 **MindSpore kernel 实现** 或 **dtype 分发逻辑**
+
+### 正确定界
+**CANN aclnn 算子缺陷** - aclnn 算子对特定 dtype 的 NaN 处理不符合 IEEE 754 标准
+
+### 判断依据
+1. **仅特定 dtype 触发**：float64 异常，float16/float32 正常 → 不是通用逻辑问题
+2. **torch_npu 行为一致**：torch_npu.sign(NaN, float64) 同样返回 nan → CANN 共性缺陷
+3. **MindSpore 侧无 dtype 分支逻辑**：sign 算子在 MindSpore 中无针对 float64 的特殊处理路径
+4. **PyTorch CPU 行为正确**：torch.sign(NaN) 在 CPU 上正确返回 0 → 标准行为明确
+
+### 验证实验
+```python
+import torch
+import mindspore as ms
+from mindspore import Tensor, mint
+import numpy as np
+
+nan = float('nan')
+
+# 1. MindSpore dtype 对比
+for dt in [ms.float16, ms.float32, ms.float64]:
+    r = mint.sign(Tensor(nan, dtype=dt))
+    print(f"MS sign(NaN, {dt}): {r}")  # fp16/fp32 → 0, fp64 → nan
+
+# 2. PyTorch CPU 基准
+for dt in [torch.float16, torch.float32, torch.float64]:
+    r = torch.sign(torch.tensor(nan, dtype=dt))
+    print(f"Torch CPU sign(NaN, {dt}): {r}")  # 全部 → 0
+
+# 3. torch_npu 对比（如有环境）
+import torch_npu
+for dt in [torch.float16, torch.float32, torch.float64]:
+    r = torch.sign(torch.tensor(nan, dtype=dt).npu())
+    print(f"torch_npu sign(NaN, {dt}): {r}")  # fp64 → nan = CANN bug
+```
+
+### 根因类型
+- **aclnnSign 对 float64 NaN 的特殊值处理缺陷**，未按 IEEE 754 标准将 sign(NaN) 映射为 0
+
+### 修复模式
+- 提交 CANN 问题单修复 aclnnSign 的 float64 NaN 处理
+- MindSpore 侧无需修改（非 MindSpore 问题）
+
+### 参考案例
+- **CS-020 (#42296)**: mint.sign float64 NaN 返回 nan 而非 0
+
+---
+
 ## 持续更新
 
 每次发现新的误导模式，按以下模板添加：

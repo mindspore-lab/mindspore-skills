@@ -56,6 +56,7 @@
 | **反向 Select 缺陷** | backward 中 Select 操作导致 GE 内存问题 | ops.pow 梯度为零 (#41932) |
 | **随机数不一致** | 旧模型未使用 mint 接口，随机数种子处理不同 | mindone I2VGenXLUNet NaN (#42126) |
 | **dtype 处理错误** | 输入 dtype 未正确处理或传递 | benchmark 忘记指定 dtype |
+| **aclnn 特殊值处理缺陷** | aclnn 算子对 inf/nan 等特殊值处理不正确，仅特定 dtype 触发 | Reciprocal complex64 inf → NaN (#42294)；sign float64 NaN → nan (#42296) |
 
 ### 诊断步骤
 

@@ -85,6 +85,32 @@ np.testing.assert_allclose(ms_output, ref_output, rtol=1e-3, atol=1e-3)
 np.testing.assert_allclose(ms_output, ref_output, rtol=5e-3, atol=5e-3)
 ```
 
+### 1.5 aclnn 特殊值缺陷 — 定界到 CANN 侧
+
+**问题**: aclnn 算子对 inf/nan 等特殊值处理不正确，仅特定 dtype 触发（如 complex64 有问题但 complex128 正常）。
+
+**关联 Issue**: #42294 (Reciprocal), Case CS-018
+
+**定界方法**: 三方对比验证。
+
+```python
+# 1. PyTorch CPU (基准)
+x = torch.tensor([np.inf+0j, np.inf+0j], dtype=torch.complex64)
+torch.reciprocal(x)  # tensor([0.+0.j, 0.+0.j]) ← 正确
+
+# 2. torch_npu (aclnn)
+x_npu = x.npu()
+torch.reciprocal(x_npu)  # tensor([nan+nanj, nan+nanj]) ← 错误
+
+# 3. MindSpore (aclnn)
+x_ms = ms.Tensor([np.inf+0j, np.inf+0j], dtype=ms.complex64)
+x_ms.reciprocal()  # [nan+nanj, nan+nanj] ← 与 torch_npu 一致
+
+# 结论: MindSpore == torch_npu != PyTorch CPU → aclnn 算子 bug
+```
+
+**处理**: 提交 CANN 问题单，MindSpore 侧无需修改。
+
 ---
 
 ## 2. Shape 推导修复模式

@@ -11,7 +11,7 @@
 | Shape推导 | 3 | 3 DONE |
 | 其他 | 22 | 22 DONE |
 | 反向传播 | 3 | 3 DONE |
-| 精度/数值 | 9 | 9 DONE |
+| 精度/数值 | 10 | 9 DONE |
 | 编译器/IR | 2 | 2 DONE |
 | 运行时 | 2 | 2 DONE |
 
@@ -87,6 +87,8 @@
 
 | Issue | 算子 | 状态 | Fix PR |
 |-------|------|------|--------|
+| #42294 | reciprocal | CANN 问题 | - (aclnnReciprocal complex64 inf 缺陷) |
+| #42295 | trunc/fix | CANN 问题 | - (aclnnTrunc 910A float→int32 溢出) |
 | #41931 | linear | DONE | https://gitee.com/mindspore/mindspore/pulls/70920 |
 | #41933 | trace | DONE | https://gitee.com/mindspore/mindspore/pulls/91548 |
 | #41934 | adam | DONE | https://gitee.com/mindspore/mindspore/pulls/70920 |

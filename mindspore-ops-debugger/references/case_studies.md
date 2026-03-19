@@ -82,6 +82,19 @@
 | 引入类型 | CANN 升级 |
 | 关键教训 | CANN 升级后需重新基线，万分之三级别的偏差通常是 CANN 内部优化导致 |
 
+### Case CS-020: mint.sign float64 NaN 返回 nan 而非 0 (#42296)
+
+| 字段 | 内容 |
+|------|------|
+| 问题 | mint.sign(NaN, float64) 返回 nan，预期应返回 0（IEEE 754 标准：sign(NaN) = 0） |
+| 环境 | Ascend 910B, CANN |
+| 错误特征 | float64 NaN → nan；float16/float32 NaN → 0（正确） |
+| 定界过程 | dtype 对比（fp16/fp32 正常，fp64 异常）→ torch_npu 对比（行为一致）→ 定界到 CANN aclnnSign |
+| 根因 | CANN aclnnSign 算子对 float64 的 NaN 特殊值处理缺陷，未按 IEEE 754 标准返回 0 |
+| 修复 | 提交 CANN 问题单，MindSpore 侧无需修改 |
+| 引入类型 | CANN 算子缺陷 |
+| 关键教训 | **仅特定 dtype 异常时，优先做三方对比（PyTorch CPU vs torch_npu vs MindSpore）**。torch_npu 行为一致说明是 CANN 共性缺陷而非 MindSpore 问题 |
+
 ---
 
 ## API/签名
@@ -265,6 +278,32 @@
 | 修复 | 优化动态 shape 执行路径 |
 | 引入类型 | 特性合入引入 |
 | 关键教训 | 动态 shape 场景的性能需要专项看护，多次执行的累积开销容易被忽略 |
+
+### Case CS-018: Reciprocal complex64 inf 返回 NaN (#42294)
+
+| 字段 | 内容 |
+|------|------|
+| 问题 | `Tensor.reciprocal` 对非空 shape 的 complex64 inf 输入返回 `nan+nanj`，标量 shape 和 complex128 均正确 |
+| 环境 | Ascend, MindSpore 2.9.0 |
+| 错误特征 | complex64 `[2]` shape 的 inf 输入 → `nan+nanj`；标量 `[]` → `0+0j`；complex128 `[2]` → `0+0j` |
+| 定界过程 | 1) shape 差异暗示不同执行路径 → 标量走 InferValue 常量折叠，非标量走 aclnn kernel 2) 对比 torch_npu 行为完全一致 → 非 MindSpore 问题 3) 对比 PyTorch CPU 基准返回 `0+0j` → aclnn 算子 bug |
+| 根因 | `aclnnReciprocal` 对 complex64 类型的 inf 输入处理有缺陷，内部 `conj(x)/|x|²` 计算中 float 精度的 inf²=inf, inf/inf=nan。complex128 (double) 路径实现不同，无此问题 |
+| 修复 | CANN 侧修复 `aclnnReciprocal`，MindSpore 侧无需修改（与 torch_npu 行为一致） |
+| 引入类型 | CANN aclnn 算子缺陷 |
+| 关键教训 | 1) shape 差异（标量 vs 非标量）是执行路径分叉的重要线索 — 标量常量折叠走 C++ 标准库，非标量走 aclnn 2) 三方对比（PyTorch CPU → torch_npu → MindSpore）是定界 aclnn 问题的标准方法 3) complex64 vs complex128 行为差异通常指向底层浮点精度处理 |
+
+### Case CS-019: mint.fix 大数值返回 INT32_MAX (#42295)
+
+| 字段 | 内容 |
+|------|------|
+| 问题 | `mint.fix(Tensor(1.e+20, dtype=float32))` 在 910A 上返回 `2.14748e+09` (INT32_MAX)，而非预期的 `1e+20` |
+| 环境 | Ascend 910A |
+| 错误特征 | 返回值 `2147483647` = `INT32_MAX`，说明内部做了 float32→int32→float32 的错误转换，int32 溢出 |
+| 定界过程 | 1) `mint.fix` → `mint.trunc` → `Trunc` primitive → `aclnnTrunc`，MindSpore 侧无任何类型转换 2) 910B3 上无法复现，结果正确 3) torch_npu 在 910B3 上结果正确 4) CPU kernel 使用 `std::trunc()` 结果正确 → 定界到 910A 平台的 `aclnnTrunc` 实现 |
+| 根因 | `aclnnTrunc` 在 910A 平台上的实现内部将 float 转为 int32 再转回 float，当输入值超出 int32 范围时溢出截断到 `INT32_MAX`。910B 上的实现已无此问题 |
+| 修复 | CANN 侧修复 `aclnnTrunc` 910A 实现，MindSpore 侧无需修改 |
+| 引入类型 | CANN aclnn 算子缺陷（平台特有） |
+| 关键教训 | 1) 返回值为 `2^31-1` 或 `-2^31` 是 float→int32 溢出的标志性特征 2) 同一 aclnn 算子在不同芯片型号（910A vs 910B）上可能有不同实现，需注意平台差异 3) 无法在目标平台复现时，可通过返回值特征（INT32_MAX）直接推断根因 4) `numpy.fix` 用 floor+ceil+select 组合实现可作为 workaround 参考 |
 
 ---
 

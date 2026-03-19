@@ -116,6 +116,9 @@ rg -l "allclose\|精度" md_files/gitcode/issues/
 8. 编译失败？ → 检查 M-008 (可能是 CANN 版本兼容性)
 9. scalar type invalid？ → 检查 M-009 (可能是类型覆盖不全)
 10. keyword_arg 错误？ → 检查 M-010 (可能是 Morph 时序问题)
+11. complex64 NaN 但 complex128 正常？ → 检查 M-011 (可能是 aclnn float 精度缺陷)
+12. 取整算子返回 2.14748e+09？ → 检查 M-012 (aclnn 内部 float→int32 溢出，平台特有)
+13. sign/特殊值函数仅特定 dtype 返回 NaN？ → 检查 M-013 (aclnn 对特定 dtype 的 NaN 处理不同)
 ```
 
 **如果匹配误导模式**：
