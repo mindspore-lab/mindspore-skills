@@ -1,0 +1,18 @@
+2026-03-19 | failure-agent | version 0.4.0
+Summary:
+- Reworked the dual-stack failure skill into an evidence-first manual diagnosis workflow aligned with ms-skills B1.2.
+- Kept failure-agent as a unified router/triage layer for MindSpore and PTA instead of deep debugger workflow.
+
+Detailed changes:
+- Replaced the old 4-stage flow with 5 explicit stages: context detection, scenario intake, knowledge lookup first, layered diagnosis, and fix/verify/report-candidate.
+- Added Golden Rules to enforce evidence-before-diagnosis, explicit assumptions/unknowns, validation-per-root-cause, and user verification before confirmation.
+- Added explicit dual-stack routing requirements for stack (`ms` or `pta`) and platform (`ascend`, `gpu`, `cpu`).
+- Added MindSpore-specific scoping summary requirements, lightweight misleading-pattern checks, and a clear handoff boundary to `mindspore-ops-debugger` for source-level/deep-debug work.
+- Locked the knowledge lookup order to `known_failure -> operator -> manual report candidate`, with a local-reference fallback when Factory tooling is unavailable.
+- Added a manual-only boundary: no automatic Factory submission, no automatic local knowledge mutation, no fabricated lookup claims.
+- Updated output contract to include scenario route, scoping result, knowledge-hit status, ranked causes, validation checks, and optional manual report candidate.
+- Updated skill.yaml description and bumped version from 0.3.0 to 0.4.0.
+- Rewrote structure and manifest tests and added behavior coverage for evidence/validation rules, MindSpore scoping/handoff, dual-stack routing, and B1.2 guidance alignment.
+Validation:
+- python -m pytest d:\codex_workspace\mindspore-skills\skills\failure-agent\tests -q
+- Result: 10 passed

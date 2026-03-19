@@ -1,8 +1,8 @@
 schema_version: "1.0.0"
 name: "failure-agent"
 display_name: "Failure Agent"
-description: "Diagnose MindSpore and PTA (PyTorch + torch_npu) crashes, runtime errors, hangs, and communication failures."
-version: "0.3.0"
+description: "Diagnose MindSpore and PTA (PyTorch + torch_npu) crashes, runtime errors, hangs, and communication failures with evidence-first triage, ordered knowledge lookup, and manual-only report candidates."
+version: "0.4.0"
 
 entry:
   type: "manual"
