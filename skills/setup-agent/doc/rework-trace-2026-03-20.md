@@ -471,6 +471,70 @@ Files changed:
      - Added assertions for path-level streaming output and mailbox summary
        content
 
+### 2026-03-21 - uv resolution and model-first workspace workflow
+
+Trigger:
+- The `uv` branch was still too weak because it allowed "installed but not
+  directly callable" outcomes.
+- The workspace phase only looked for scripts and checkpoint files and did not
+  support the required "reuse local model directory first, otherwise download
+  the requested Hugging Face model" behavior.
+- `task_type` existed in the manifest but was not shaping runtime or artifact
+  decisions.
+
+Files changed:
+
+1. `skills/setup-agent/SKILL.md`
+   - Description: Main execution prompt used by the model
+   - Change:
+     - Tightened the `uv` gate so health now requires both `command -v uv` and
+       `uv --version`
+     - Added PATH-persistence remediation with explicit user confirmation
+     - Reworked the workspace phase into a model-first flow:
+       - discover local model directories first
+       - ask the user to choose a local model when candidates exist
+       - otherwise ask which Hugging Face model to download
+       - use `huggingface_hub.snapshot_download` in the selected `uv`
+         environment
+     - Added `task_type`-specific artifact classification for training and
+       inference cases
+
+2. `skills/setup-agent/references/execution-contract.md`
+   - Description: Runtime UX and reporting contract
+   - Change:
+     - Added streamed steps for local model discovery, model selection, and
+       Hugging Face download
+     - Added report fields for direct `uv` resolution, PATH update action,
+       selected model path, model source, and download/auth failures
+     - Added selected-model fields to the final mailbox summary example
+
+3. `skills/setup-agent/references/ascend-compat.md`
+   - Description: Compatibility lookup and repair policy
+   - Change:
+     - Tightened the Python-layer ready signals to require direct `uv`
+       resolution from the shell
+     - Updated allowed automation to include user-confirmed PATH persistence
+     - Added a stop condition when `uv` still cannot be resolved after install
+       and PATH remediation
+
+4. `skills/setup-agent/skill.yaml`
+   - Description: Skill manifest
+   - Change:
+     - Updated the skill description to mention direct `uv` resolution and
+       model workspace reuse/download
+     - Added optional `model_id` and `model_root` inputs
+     - Bumped the version to `0.4.0`
+
+5. `skills/setup-agent/tests/test_references.py`
+   - Description: Behavior-contract tests for the skill prompt and references
+   - Change:
+     - Replaced the old generic artifact tests with checks for:
+       - direct `uv` resolution after install
+       - model-first workspace selection
+       - `snapshot_download` usage
+       - `task_type`-specific artifact classification
+       - selected-model and download/auth reporting requirements
+
 ## Validation Performed
 
 The rework was validated with:

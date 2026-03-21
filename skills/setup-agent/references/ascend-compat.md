@@ -122,6 +122,7 @@ Typical signals:
 ### Python-layer ready
 
 Typical signals:
+- `uv` is directly resolvable from the shell with `command -v uv` and `uv --version`
 - selected `uv` environment is known
 - framework import succeeds
 - smoke test succeeds on Ascend
@@ -152,7 +153,8 @@ explicitly remind the user to start from:
 ## Repair Policy
 
 Allowed automation:
-- install user-level `uv`
+- install `uv` via the official installer
+- update shell PATH with user confirmation so `uv --version` works directly
 - create or reuse a user-confirmed `uv` environment
 - install missing Python packages inside that environment
 
@@ -167,4 +169,5 @@ Stop and hand back to the user when:
 - `npu-smi info` fails
 - driver or CANN is missing
 - `set_env.sh` cannot be sourced
+- `uv` cannot be resolved directly from the shell after install and PATH update
 - the user has not confirmed which `uv` environment to use

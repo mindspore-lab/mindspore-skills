@@ -38,6 +38,9 @@ Major steps that must stream:
 - work dir
 - uv
 - uv environment selection
+- local model directories
+- model selection
+- hugging face download
 - MindSpore
 - torch
 - torch_npu
@@ -74,7 +77,9 @@ Required report content:
 - NPU visibility and `npu-smi` result
 - driver, firmware, and CANN state
 - `set_env.sh` sourcing result
-- `uv` availability, selected environment, and Python details from inside `uv`
+- `uv` availability, direct shell resolution status, any PATH update action, selected environment, and Python details from inside `uv`
+  - direct shell resolution status
+  - PATH update action
 - MindSpore results
 - `torch` / `torch_npu` results
 - runtime dependency and install results
@@ -85,6 +90,10 @@ Required report content:
   - `safetensors`
   - `diffusers`
 - work dir artifact results
+  - local model directory findings
+  - candidate model directory list
+  - selected model path
+  - selected model source (`local` or `huggingface`)
   - training scripts
   - checkpoint files
   - matched training script paths
@@ -95,6 +104,7 @@ Required report content:
   framework, or toolkit is missing
 - generic Hugging Face download guidance when training scripts or checkpoint
   files are missing from the current work dir
+- download/auth failure reason when a Hugging Face model cannot be fetched
 
 Use only these status values:
 - `PASS`
@@ -113,6 +123,8 @@ The final summary must include:
 - which components are already installed
 - which components are missing or not yet installed
 - which checks were skipped
+- selected model path when present
+- whether the selected model was reused locally or downloaded
 - matched training script paths when present
 - matched checkpoint paths when present
 - the failure reason if the run failed
@@ -131,6 +143,10 @@ workdir:
 installed:
 - uv 0.10.9
 - python 3.10.12
+selected_model:
+- ./models/qwen-7b
+model_source:
+- local
 training_scripts:
 - ./train.py
 checkpoint_files:
