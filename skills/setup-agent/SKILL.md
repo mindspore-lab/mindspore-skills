@@ -1,6 +1,6 @@
 ---
 name: setup-agent
-description: "Validate and remediate local Ascend/NPU runtime environments for model execution. This skill checks OS, NPU visibility, driver and CANN toolkit installation, verifies that Ascend environment scripts can be sourced, ensures `uv` is available, inspects or creates a user-confirmed `uv` environment, validates both MindSpore and PyTorch + torch_npu stacks inside that environment, installs missing Python dependencies there, and emits a standard report. Do NOT use this skill for Nvidia/GPU, kernel development, source builds, or performance tuning."
+description: "Validate and remediate local Ascend/NPU runtime environments for model execution. This skill checks NPU visibility, driver and CANN toolkit installation, verifies Ascend environment sourcing, ensures `uv` is available, inspects or creates a user-confirmed `uv` environment, validates both MindSpore and PyTorch + torch_npu stacks inside that environment, installs missing Python dependencies there, and emits a standard report. Do NOT use this skill for Nvidia/GPU, kernel development, source builds, or performance tuning."
 ---
 
 # Setup Agent
@@ -9,7 +9,7 @@ You are an Ascend environment setup specialist. Determine whether the local
 machine is ready to run models on Huawei Ascend NPU, and repair only the
 user-space pieces that are safe to automate.
 
-This skill supports two framework paths on Ascend:
+Supported framework paths:
 
 | Path | Stack |
 |------|-------|
@@ -20,14 +20,15 @@ This skill is Ascend-only. Do not inspect Nvidia or CUDA state.
 
 ## Scope
 
-- Check OS, NPU visibility, driver, firmware, CANN, and Ascend env sourcing
+- Check NPU visibility, driver, firmware, CANN, and Ascend env sourcing
+- Treat the current shell path as the default work dir
 - Ensure `uv` exists before any Python package work
 - Work only on the local machine
 - Validate both MindSpore and `torch` + `torch_npu`
 - Install missing Python packages only inside a user-confirmed `uv` environment
 - Emit a standard run report
 
-## Hard Rules
+## Non-Negotiables
 
 - You MUST check and report on NPU driver, firmware, and CANN toolkit
 - You MUST verify whether Ascend environment variables can be loaded via `set_env.sh`
@@ -43,18 +44,23 @@ This skill is Ascend-only. Do not inspect Nvidia or CUDA state.
 - Never install Python packages into the system interpreter.
 - If both framework paths are unhealthy, report both independently.
 
+Console and reporting requirements live in:
+- `references/execution-contract.md`
+
+Compatibility and install guidance live in:
+- `references/ascend-compat.md`
+
 ## Workflow
 
 ### 1. System Baseline
 
-Collect baseline evidence first. Always use actual command output.
+Collect system evidence first. Always use real command output.
 
 Run:
 
 ```bash
 uname -a
 cat /etc/os-release 2>/dev/null
-python3 --version 2>/dev/null
 npu-smi info 2>/dev/null
 npu-smi info -t board 2>/dev/null
 ls /dev/davinci* 2>/dev/null
@@ -68,9 +74,16 @@ Classify:
 - driver: `not_installed`, `installed_but_unusable`, `installed_and_usable`, `incompatible`
 - CANN: `not_installed`, `installed_but_unusable`, `installed_and_usable`, `incompatible`
 
+If no NPU card is detected:
+- stop immediately at device visibility
+- skip the later Ascend driver and CANN checks
+- tell the user the current machine is not an Ascend host
+
 If driver or CANN is not installed or unusable:
 - stop before `uv` package remediation
-- provide official CANN installation guidance from `references/ascend-compat.md`
+- tell the user to install the CANN-related environment by following:
+  `https://www.hiascend.com/cann/download`
+- use `references/ascend-compat.md` for the official repair order
 
 ### 2. Ascend Env Sourcing
 
@@ -86,10 +99,23 @@ Record:
 - `LD_LIBRARY_PATH`
 - `PYTHONPATH`
 
-If sourcing fails, report it as a system-layer failure and do not continue to
-framework installs.
+If sourcing fails:
+- report it as a system-layer failure
+- stop before framework installs
 
-### 3. uv Entry
+### 3. Work Dir
+
+Treat the current shell path as the default work dir.
+
+Capture it with:
+
+```bash
+pwd
+```
+
+Record and report the resolved work dir before `uv` environment discovery.
+
+### 4. uv Entry
 
 All Python package checks and installs happen only after `uv` is confirmed and
 the user confirms which environment to use.
@@ -132,7 +158,17 @@ uv pip list --python .venv/bin/python
 uv run --python .venv/bin/python python -c "print('ok')"
 ```
 
-### 4. Framework Checks Inside uv
+Only after entering the selected `uv` environment, check Python-related facts:
+
+```bash
+python -V
+python -c "import sys; print(sys.executable)"
+```
+
+Do not check or report Python runtime readiness before the NPU-related system
+checks have completed and the workflow has entered `uv`.
+
+### 5. Framework Checks Inside uv
 
 Only enter this phase after:
 - NPU device visibility passed
@@ -141,7 +177,7 @@ Only enter this phase after:
 - `uv` is available
 - the user has confirmed the target `uv` environment
 
-#### C2. MindSpore path
+#### MindSpore path
 
 Check:
 
@@ -153,7 +189,13 @@ python -c "import mindspore as ms; ms.set_context(device_target='Ascend'); print
 Validate package presence, Python compatibility, CANN compatibility, and the
 minimal smoke test using `references/ascend-compat.md`.
 
-#### C3. PTA path (`torch` + `torch_npu`)
+If MindSpore is missing:
+- tell the user to first verify the Ascend CANN-related environment from
+  `https://www.hiascend.com/cann/download`
+- continue with framework installation inside the selected `uv` environment
+  only after the system layer is healthy
+
+#### PTA path (`torch` + `torch_npu`)
 
 Check:
 
@@ -166,7 +208,13 @@ python -c "import torch, torch_npu; x=torch.tensor([1.0]).npu(); print('torch_np
 Validate package presence, Python compatibility, CANN compatibility, and the
 minimal smoke test using `references/ascend-compat.md`.
 
-### 5. Runtime Dependency Checks
+If `torch` or `torch_npu` is missing:
+- tell the user to first verify the Ascend CANN-related environment from
+  `https://www.hiascend.com/cann/download`
+- continue with framework installation inside the selected `uv` environment
+  only after the system layer is healthy
+
+### 6. Runtime Dependency Checks
 
 Check these packages in the selected environment:
 
@@ -180,54 +228,36 @@ python -c "import diffusers; print(diffusers.__version__)" 2>/dev/null
 ```
 
 Policy:
-- `transformers`, `tokenizers`, `accelerate`, `safetensors` are common checks
-- `datasets` is optional unless data loading is needed
-- `diffusers` is optional by default; mark it `SKIP` unless the workload is diffusion-related
+- `transformers`, `tokenizers`, `datasets`, `accelerate`, `safetensors`, and `diffusers` are standard runtime checks
 - install only inside the selected `uv` environment
 - always ask for confirmation before creating a new `uv` environment or installing Python packages
 
-## Compatibility Source
+### 7. Workdir Artifact Checks
 
-Use `references/ascend-compat.md` for:
-- driver / firmware / CANN
-- MindSpore / CANN / Python
-- torch / torch_npu / CANN / Python
+After runtime dependency checks, inspect the current work dir for required
+workspace artifacts.
 
-Unknown versions must not be guessed as compatible:
-- `PASS`: exact or clearly in-range match
-- `WARN`: version not in table but no direct conflict known
-- `FAIL`: known incompatible combination
+Check for training scripts:
 
-## Reporting
+```bash
+find . -type f -name "*.py" 2>/dev/null
+```
 
-Every run must produce standard outputs under `runs/<run_id>/out/`:
+Check for checkpoint-like files:
 
-- `report.json`
-- `report.md`
-- `logs/run.log`
-- `logs/verify.log`
-- `artifacts/README.md`
-- `meta/env.json`
-- `meta/inputs.json`
+```bash
+find . -type f \( -name "*.ckpt" -o -name "*.pt" -o -name "*.pth" -o -name "*.bin" -o -name "*.safetensors" \) 2>/dev/null
+```
 
-Required report content:
-- OS information
-- NPU visibility and `npu-smi` result
-- driver, firmware, and CANN state
-- `set_env.sh` sourcing result
-- `uv` availability and selected environment
-- MindSpore results
-- `torch` / `torch_npu` results
-- runtime dependency and install results
-- smoke test results
-- manual system-layer remediation steps if needed
+Classification:
+- training script check: `PASS` if one or more `.py` files exist, otherwise `FAIL`
+- checkpoint check: `PASS` if one or more `.ckpt`, `.pt`, `.pth`, `.bin`, or `.safetensors` files exist, otherwise `FAIL`
+- if files are found, print and record the matched training script paths and checkpoint paths
 
-Use only these status values:
-- `PASS`
-- `FAIL`
-- `WARN`
-- `SKIP`
-- `INFO`
+If the work dir is missing training scripts or checkpoint files:
+- do not reclassify the Ascend driver/CANN/framework setup as failed
+- report it as a workspace-preparation failure or partial result
+- tell the user to download the missing script or checkpoint files from Hugging Face into the current work dir
 
 ## Out of Scope
 

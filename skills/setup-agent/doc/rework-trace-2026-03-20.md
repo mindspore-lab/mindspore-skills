@@ -9,6 +9,21 @@ the `setup-agent` rework completed on 2026-03-20. It is meant to preserve the
 reasoning trail so future optimization work can start from the full context
 instead of rediscovering why the current structure exists.
 
+## Maintenance Rule
+
+From this point forward, every `setup-agent` change should update this trace.
+
+Each update entry must record:
+
+1. The date of the change
+2. The reason or trigger for the change
+3. Every file that was added, updated, or deleted
+4. A short description of what each changed file is responsible for
+5. A short summary of what changed in that file
+
+This rule exists so future refactors can reconstruct the full scope quickly,
+instead of relying on scattered commit history or chat context.
+
 ## Why This Rework Happened
 
 The original `setup-agent` had several structural problems:
@@ -228,6 +243,233 @@ These were identified but not implemented in this rework:
 3. Add scripted helpers in the future if the skill evolves from prompt-driven
    workflow to a more tool-backed workflow.
 4. Improve version matrices over time as the official compatibility data changes.
+
+## Post-Rework Follow-Up: Streaming Output and Mailbox Summary
+
+After the initial rework, an additional UX requirement was identified:
+
+1. The skill should print progress as a live stream while checks are running.
+2. The skill should always finish with a mailbox-style summary, regardless of
+   whether the run succeeds or fails.
+
+Why this matters:
+- Users need immediate visibility into what the skill is checking right now.
+- Early failure is easier to understand when the failed step is printed in-line.
+- A final compact summary is better for operator handoff than a long narrative.
+
+What this requirement changed conceptually:
+- `SKILL.md` is no longer only a decision workflow; it also defines console UX.
+- The console stream now becomes part of the skill contract, not an optional
+  presentation detail.
+- The final summary must always answer five questions:
+  - what is already installed
+  - what is missing
+  - what was skipped
+  - why the run failed, if it failed
+  - what should happen next
+
+What should remain true in future edits:
+- do not replace the stream with only an end-of-run report
+- do not omit the final summary on early failure
+- keep per-step lines short and status-first
+- keep the final summary compact and operator-readable
+
+## Change Log Updates
+
+### 2026-03-21 - Flow control and install guidance refinement
+
+Trigger:
+- The workflow needed to stop earlier when no NPU card is present.
+- Missing Ascend driver, framework, or toolkit needed a stronger and more
+  explicit redirect to the Huawei Ascend CANN download portal.
+
+Files changed:
+
+1. `skills/setup-agent/SKILL.md`
+   - Description: Main execution contract for the skill
+   - Change:
+     - Added the rule that no NPU card means immediate stop at device
+       visibility
+     - Added the rule that later driver and CANN checks are skipped in that
+       case
+     - Added explicit user guidance to `https://www.hiascend.com/cann/download`
+       when Ascend driver, framework, or toolkit is missing
+
+2. `skills/setup-agent/references/ascend-compat.md`
+   - Description: Compatibility and official installation guidance reference
+   - Change:
+     - Added the no-NPU early stop rule
+     - Added the Ascend CANN download portal as the primary manual recovery
+       link
+
+3. `skills/setup-agent/tests/test_references.py`
+   - Description: Behavior-contract tests for the skill prompt and references
+   - Change:
+     - Added tests for no-NPU short-circuit behavior
+     - Added tests for the required `https://www.hiascend.com/cann/download`
+       guidance
+
+### 2026-03-21 - Python checks moved behind uv and system readiness
+
+Trigger:
+- Python environment checks were happening too early in the mental model of the
+  workflow.
+- The desired contract is: finish NPU-related checks first, then enter `uv`,
+  then inspect Python.
+
+Files changed:
+
+1. `skills/setup-agent/SKILL.md`
+   - Description: Main execution contract for the skill
+   - Change:
+     - Removed `python3 --version` from system baseline
+     - Moved Python runtime checks to the post-`uv` stage
+     - Clarified that Python readiness must not be reported before the system
+       layer is healthy and the workflow has entered `uv`
+
+2. `skills/setup-agent/tests/test_references.py`
+   - Description: Behavior-contract tests for the skill prompt and references
+   - Change:
+     - Added a test that Python checks only happen after entering `uv`
+     - Added a regression guard to prevent `python3 --version` from returning
+       to the system baseline stage
+
+### 2026-03-21 - Commercial-run readiness refactor
+
+Trigger:
+- The prompt had accumulated too many responsibilities in one file and was
+  becoming harder to maintain as a commercial-grade skill entry.
+- The target shape is a compact execution prompt with reference files owning
+  compatibility and runtime-output detail.
+
+Files changed:
+
+1. `skills/setup-agent/SKILL.md`
+   - Description: Main execution prompt used by the model
+   - Change:
+     - Refactored into a shorter, execution-oriented contract
+     - Kept scope, non-negotiables, workflow, and stop conditions
+     - Moved console/reporting detail out to a dedicated reference
+
+2. `skills/setup-agent/references/execution-contract.md`
+   - Description: Runtime UX and reporting contract for streaming output,
+     report artifacts, and final mailbox summary
+   - Change:
+     - Added as a new reference file
+     - Centralized streaming console output rules
+     - Centralized report artifact requirements
+     - Centralized final mailbox summary contract
+
+3. `skills/setup-agent/references/ascend-compat.md`
+   - Description: Compatibility and official installation guidance reference
+   - Change:
+     - Retained as the compatibility/install reference after the prompt split
+     - Continued to own device/toolkit/framework compatibility rules
+
+4. `skills/setup-agent/tests/test_references.py`
+   - Description: Behavior-contract tests for the skill prompt and references
+   - Change:
+     - Updated to require `references/execution-contract.md`
+     - Updated reporting and streaming assertions to target the new reference
+     - Relaxed old title-specific assertions to match the refactored structure
+
+### 2026-03-21 - Runtime dependency policy tightened
+
+Trigger:
+- `datasets` and `diffusers` should no longer be treated as optional checks.
+- The target runtime environment should install and verify the full common model
+  dependency set by default.
+
+Files changed:
+
+1. `skills/setup-agent/SKILL.md`
+   - Description: Main execution prompt used by the model
+   - Change:
+     - Updated runtime dependency policy so `datasets` and `diffusers` are
+       standard checks alongside `transformers`, `tokenizers`, `accelerate`,
+       and `safetensors`
+
+2. `skills/setup-agent/references/execution-contract.md`
+   - Description: Runtime UX and reporting contract
+   - Change:
+     - Expanded the required runtime dependency report list to explicitly
+       include `datasets` and `diffusers`
+
+3. `skills/setup-agent/tests/test_references.py`
+   - Description: Behavior-contract tests for the skill prompt and references
+   - Change:
+     - Added regression checks to ensure `datasets` and `diffusers` remain
+       standard runtime checks rather than optional branches
+
+### 2026-03-21 - Work dir and artifact validation upgrade
+
+Trigger:
+- The current shell path needed to become an explicit default work dir.
+- The skill needed a post-dependency workspace validation step for training
+  scripts and checkpoint files.
+
+Files changed:
+
+1. `skills/setup-agent/SKILL.md`
+   - Description: Main execution prompt used by the model
+   - Change:
+     - Added the current `pwd` path as the default work dir
+     - Added a dedicated work dir phase before `uv` discovery
+     - Added a new workdir artifact check phase after runtime dependency checks
+     - Defined training script detection with `.py`
+     - Defined checkpoint detection with `.ckpt`, `.pt`, `.pth`, `.bin`,
+       `.safetensors`
+     - Added generic Hugging Face guidance when script or checkpoint artifacts
+       are missing from the current work dir
+
+2. `skills/setup-agent/references/execution-contract.md`
+   - Description: Runtime UX and reporting contract
+   - Change:
+     - Added work dir to streaming output requirements
+     - Added training script and checkpoint file checks to streaming output
+     - Added current work dir and workdir artifact findings to required report
+       content
+     - Added current work dir and Hugging Face guidance to the final mailbox
+       summary contract
+
+3. `skills/setup-agent/tests/test_references.py`
+   - Description: Behavior-contract tests for the skill prompt and references
+   - Change:
+     - Added tests that require `pwd`-based work dir capture
+     - Added tests for the new workdir artifact check phase
+     - Added tests for supported checkpoint suffixes
+     - Added tests requiring Hugging Face guidance when training scripts or
+       checkpoints are missing
+
+### 2026-03-21 - Artifact path visibility refinement
+
+Trigger:
+- The artifact-check stage needed to expose the exact matched training script
+  and checkpoint paths, not just pass/fail states.
+- The final mailbox summary also needed to preserve those paths for operator
+  handoff.
+
+Files changed:
+
+1. `skills/setup-agent/SKILL.md`
+   - Description: Main execution prompt used by the model
+   - Change:
+     - Added the requirement to print and record matched training script paths
+       and checkpoint paths during the workdir artifact phase
+
+2. `skills/setup-agent/references/execution-contract.md`
+   - Description: Runtime UX and reporting contract
+   - Change:
+     - Added streaming examples that print concrete training script and
+       checkpoint paths
+     - Added matched artifact paths to required report content
+     - Added matched artifact paths to the final mailbox summary contract
+
+3. `skills/setup-agent/tests/test_references.py`
+   - Description: Behavior-contract tests for the skill prompt and references
+   - Change:
+     - Added assertions for path-level streaming output and mailbox summary
+       content
 
 ## Validation Performed
 

@@ -15,6 +15,7 @@ Use this file in this order:
    `Official Installation Guides` and `Repair Policy`
 
 Decision rule:
+- no NPU card detected: stop immediately and skip later driver/CANN checks
 - missing driver or missing CANN: stop at the system layer
 - `set_env.sh` cannot be sourced: stop at the system layer
 - system layer healthy: continue to `uv` and Python package checks
@@ -40,6 +41,7 @@ Interpretation:
 - `WARN`: one of the detected versions is not in the table
 
 Stop conditions:
+- no Ascend NPU card is present on the machine
 - `npu-smi info` fails and no usable backup evidence exists
 - driver version file is missing
 - CANN toolkit version file is missing
@@ -129,6 +131,7 @@ Typical signals:
 Use these links when the setup-agent detects missing or unusable system-layer
 components:
 
+- Ascend CANN download portal: https://www.hiascend.com/cann/download
 - MindSpore install guide: https://www.mindspore.cn/install
 - Ascend CANN community downloads: https://www.hiascend.com/software/cann/community
 - Ascend documentation portal: https://www.hiascend.com/document
@@ -141,6 +144,10 @@ Recommended manual repair order:
 3. Source `/usr/local/Ascend/ascend-toolkit/set_env.sh`
 4. Re-run `npu-smi info`
 5. Return to `uv` and Python package checks only after the system layer is healthy
+
+If the Ascend driver, framework, or toolkit is missing, the setup-agent should
+explicitly remind the user to start from:
+- https://www.hiascend.com/cann/download
 
 ## Repair Policy
 
@@ -156,6 +163,7 @@ Forbidden automation:
 - install Python packages into the system interpreter
 
 Stop and hand back to the user when:
+- no NPU card is detected
 - `npu-smi info` fails
 - driver or CANN is missing
 - `set_env.sh` cannot be sourced
