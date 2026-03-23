@@ -1,124 +1,44 @@
 ---
-name: "mhc-integrator"
-description: "Use when the user asks to integrate mHC (manifold-constrained hyper-connections) into any LLM architecture or training framework. Triggers for: 'add mHC to [model]', 'enable multi-stream residual in [framework]', 'implement residual-stream routing', 'add hyper-connections to training', 'mHC for llama-factory', 'mHC for transformers', 'mHC for [any model]'. This skill provides architecture-agnostic mHC integration with support for HuggingFace transformers, llama-factory, native torch implementations, and custom decoders. Do not use for basic FlashAttention optimization or MoE routing - those need separate skills."
+name: mhc-integrator
+description: Add manifold-constrained hyper-connections (mHC) to decoder-only or causal LLMs in PyTorch or Hugging Face Transformers. Use when Codex needs to port the mHC residual-stream design from a notebook, paper, or existing implementation into a decoder stack by extending config classes, adding per-block mHC modules, expanding and reducing residual streams, wiring initialization, exposing load or train flags, or adding tests for output shape and doubly-stochastic residual mappings.
 ---
 
 # mHC Integrator
 
-Universal mHC integration skill for adding manifold-constrained hyper-connections to any LLM architecture or training framework.
+Use this skill to retrofit mHC into an existing decoder block without changing the model's public hidden size.
+Treat mHC as a residual-stream wrapper around attention and MLP, not as a new attention mechanism.
 
-## Core Concept
+## Core workflow
 
-mHC modifies residual connections with learnable stream routing:
-```
-x_{l+1} = H_l^{res} x_l + H_l^{post} · F(H_l^{pre} x_l, W_l)
-```
+1. Inspect the target model's config class, decoder block, model forward path, training entrypoints, and any code-generation constraints.
+2. Add config fields for `use_mhc`, `mhc_expansion_rate`, `mhc_sinkhorn_iterations`, `mhc_gating_factor_init`, and `mhc_output_reduce`, plus argument validation.
+3. Add an mHC module that consumes `[batch, seq, streams, hidden]`, flattens to `[batch, seq, streams * hidden]`, and emits `pre`, `post`, and `residual` mappings.
+4. Keep the non-mHC decoder path behaviorally identical; gate the new path behind `config.use_mhc`.
+5. Expand streams once after embeddings and reduce them once before final norm or task heads.
+6. Wire custom initialization so mHC starts close to stable identity mixing instead of arbitrary branch interference.
+7. Expose the flag at load and training callsites and add focused tests.
 
-Key constraints:
-- `H_res`: doubly stochastic (row/col sums = 1, non-negative) via Sinkhorn-Knopp or Newton-Schulz
-- `H_pre`, `H_post`: non-negative (softmax)
+## Integration rules
 
-## Quick Start
+- Do not change the attention module's public input or output hidden size. mHC reduces `[B, S, N, D]` to `[B, S, D]` before attention or MLP and restores the residual stream afterward.
+- Build masks, cache metadata, and RoPE inputs from the base `[B, S, D]` embeddings, not from the expanded residual tensor.
+- Reduce streams before the final model norm and LM head so downstream heads and losses stay unchanged.
+- Keep mapping logits in `float32` for Sinkhorn stability even when the model runs in `bf16` or `fp16`.
+- Do not modify `modular_xx.py`. Do not regenerate `modeling_xx.py`. Directly modify `modeling_xx.py` at the real decoder implementation site unless the user explicitly asks for a regeneration workflow.
+- Prefer `mhc_output_reduce="mean"` when retrofitting pretrained checkpoints. Use `"sum"` only when intentionally matching a reference implementation that sums branches.
 
-1. Identify the model's residual pattern (pre-norm, post-norm, RMSNorm locations)
-2. Choose integration path based on framework:
-   - **HuggingFace models** → read `references/huggingface.md`
-   - **llama-factory** → read `references/llama-factory.md`
-   - **Native torch / custom** → read `references/native-torch.md`
-3. Use `StaticMHCAdapter` from `assets/templates/portable_static_mhc.py`
-4. Add config keys: `mhc_enabled`, `mhc_num_streams`, `mhc_projection`, `mhc_sinkhorn_iters`, `mhc_sinkhorn_tau`
-5. Expand streams at model entry, wrap each residual branch, reduce after final norm
+## Implementation notes
 
-## Integration Patterns
+- The notebook prototype expands embeddings with `unsqueeze(...).repeat(...)` and merges them back with `sum(dim=2)`.
+- The provided Qwen3 port keeps the prototype's mapping structure but uses a simpler `RMSNorm -> Linear` path instead of the fused RMSNorm trick from the notebook. Revisit the fused version only if profiling shows the mapping path is a bottleneck.
+- Initialize `alpha` near zero so pretrained residual dynamics are not immediately destabilized.
+- Bias the residual mapping toward an identity matrix at initialization so each stream mostly preserves itself before training.
+- When `mhc_expansion_rate == 1`, special-case formulas that would otherwise call `log(0)`.
 
-### Pattern A: Expand → Wrap Branches → Reduce
+## References
 
-```
-input
-  ↓
-expand_streams (repeat or identity_safe)
-  ↓
-block 1: wrap attention branch + wrap MLP branch
-block 2: ...
-block N: ...
-  ↓
-reduce_streams (sum)
-  ↓
-output
-```
+Open only what you need:
 
-### Pattern B: Minimal (num_streams=1)
-
-When `num_streams=1`, mHC degenerates to standard residual. Use this for baseline comparison.
-
-## Config Keys
-
-| Key | Default | Description |
-|-----|---------|-------------|
-| `mhc_enabled` | `False` | Enable/disable mHC |
-| `mhc_num_streams` | `4` | Number of residual streams |
-| `mhc_projection` | `"sinkhorn"` | `"sinkhorn"` or `"orthostochastic"` |
-| `mhc_sinkhorn_iters` | `10` | Sinkhorn iterations |
-| `mhc_sinkhorn_tau` | `0.05` | Sinkhorn temperature |
-| `mhc_residual_identity_mix` | `False` | Mix H_res with identity |
-| `mhc_residual_alpha` | `0.01` | Identity mix coefficient |
-
-## Initialization Strategies
-
-### from_scratch (new training)
-- `expand_streams_repeat` at entry
-- Diagonal-dominant H_res init (0 on diag, -8 off diag)
-- H_pre selects one primary stream per layer
-- Zero-initialize H_post
-
-### checkpoint_retrofit (existing weights)
-- `expand_streams_identity_safe` at entry
-- Stronger diagonal bias (-12 off diag)
-- H_pre/H_post default to stream 0
-- Enable `mhc_residual_identity_mix` for sensitive checkpoints
-
-## Framework-Specific Guidance
-
-### HuggingFace (Llama, Qwen, Mistral, Gemma, etc.)
-- Read `references/huggingface.md`
-- Wrap `self_attn` and `mlp` branches in each `DecoderLayer`
-- Preserve `use_cache`, `past_key_value`, `output_attentions`
-- Handle tuple returns from attention
-
-### llama-factory
-- Read `references/llama-factory.md`
-- Typically modify the `LLMFactory` or model wrapper
-- May need to handle `LoraConfig` integration
-- Checkpoint loading requires `identity_safe` expansion
-
-### Native torch / custom implementations
-- Read `references/native-torch.md`
-- Most flexible - adapt to any residual pattern
-- Ensure expand happens once at entry, reduce once at exit
-- Test with `num_streams=1` for regression
-
-## Validation Checklist
-
-- [ ] H_res row/col sums ≈ 1, all entries ≥ 0
-- [ ] H_pre, H_post non-negative
-- [ ] `num_streams=1` → standard residual behavior
-- [ ] Logits shape unchanged from baseline
-- [ ] Gradients flow to H_res_logits, H_pre_logits, H_post_logits
-- [ ] Cache (use_cache=True) works correctly
-- [ ] Training loss converges similarly to baseline initially
-
-## Common Issues
-
-**Gradient vanishes**: Check H_res initialization, try identity_mix with small alpha
-
-**Loss explodes**: Reduce learning rate, check H_post initialization
-
-**Memory increase**: num_streams=N multiplies residual memory by N
-
-**Cache breaks**: Ensure past_key_value handling in attention wrapper
-
-## Non-Examples (Use Other Skills)
-
-- "Optimize attention kernel" → performance/vectorization skill
-- "Add MoE routing" → MoE-specific skill
-- "Implement mHC from scratch for research" → mHC-algorithm skill
+- `references/implementation-pattern.md`: generic porting recipe, shapes, pseudocode, and initialization rules.
+- `references/qwen3-case-study.md`: mapping from the provided notebook, Qwen3 files, tests, and training script.
+- `references/validation-checklist.md`: minimum and extended validation matrix plus failure symptoms.
