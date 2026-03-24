@@ -1,8 +1,8 @@
 schema_version: "1.1.0"
 name: "readiness-agent"
 display_name: "Readiness Agent"
-description: "Analyze a local single-machine training workspace, infer its framework and training method from workspace evidence, validate whether environment, libraries, configs, data, model, and checkpoint can work together, and emit a reusable readiness snapshot and report."
-version: "0.1.0"
+description: "Certify whether a local single-machine workspace is runnable for the intended training or inference task by discovering the execution target, validating dependency closure, optionally applying safe user-space remediation, revalidating affected checks, and emitting a reusable readiness report."
+version: "0.2.0"
 
 entry:
   type: "manual"
@@ -23,44 +23,65 @@ inputs:
   - name: "working_dir"
     type: "path"
     required: false
-    description: "Code folder or workspace root to analyze. Defaults to the current shell path."
+    description: "Workspace root or code folder to certify. Defaults to the current shell path."
+  - name: "target"
+    type: "enum"
+    required: false
+    default: "auto"
+    choices: ["training", "inference", "auto"]
+    description: "Intended task target. Auto infers the target from evidence and must downgrade to WARN if ambiguity remains."
   - name: "mode"
     type: "enum"
     required: false
-    default: "quick"
-    choices: ["quick", "full"]
-    description: "Quick gives a pragmatic readiness answer; full records deeper evidence and a richer snapshot."
+    default: "check"
+    choices: ["check", "fix", "auto"]
+    description: "Execution strategy only. Check validates without mutation, fix enables safe user-space remediation, and auto conditionally repairs remediable blockers before revalidation."
   - name: "entry_script"
     type: "path"
     required: false
-    description: "Explicit training entry script when already known."
-  - name: "train_config"
+    description: "Explicit entry script when already known."
+  - name: "config_path"
     type: "path"
     required: false
-    description: "Explicit train config path when already known."
-  - name: "model_dir"
+    description: "Explicit training or inference config path when already known."
+  - name: "model_path"
     type: "path"
     required: false
-    description: "Explicit model directory when already known."
-  - name: "dataset_dir"
+    description: "Explicit model directory or model artifact path when already known."
+  - name: "dataset_path"
     type: "path"
     required: false
-    description: "Explicit dataset directory when already known."
-  - name: "ckpt_dir"
+    description: "Explicit dataset path when the intended target requires it."
+  - name: "checkpoint_path"
     type: "path"
     required: false
-    description: "Explicit checkpoint directory when resume is intended."
+    description: "Explicit checkpoint path when resume or checkpoint-backed execution is intended."
+  - name: "task_smoke_cmd"
+    type: "string"
+    required: false
+    description: "Optional explicit minimal smoke command for controlled task-level verification after prerequisite checks pass."
   - name: "factory_root"
     type: "path"
     required: false
-    description: "Optional local ms-factor or Factory root for compatibility rules and known constraints."
+    description: "Optional local Factory root for compatibility evidence and supporting knowledge."
+  - name: "allow_network"
+    type: "boolean"
+    required: false
+    default: false
+    description: "Allows network-dependent remediation such as confirmed model download or remote compatibility lookup when the workflow permits it."
+  - name: "fix_scope"
+    type: "enum"
+    required: false
+    default: "safe-user-space"
+    choices: ["none", "safe-user-space"]
+    description: "Restricts remediation scope. Safe-user-space allows only non-system fixes inside the permitted workspace and selected Python environment."
 
 outputs:
   report_schema: "skills/_shared/contract/report.schema.json"
   out_dir_layout: "runs/<run_id>/out/"
 
 permissions:
-  network: "none"
+  network: "optional"
   filesystem: "workspace-write"
 
 dependencies:
@@ -74,7 +95,9 @@ tags:
   - "environment"
   - "readiness"
   - "training"
+  - "inference"
   - "preflight"
+  - "certification"
   - "mindspore"
   - "torch_npu"
-  - "transformers"
+  - "ascend"
