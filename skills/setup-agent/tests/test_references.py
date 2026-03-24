@@ -182,16 +182,24 @@ def test_skill_requires_uv_before_python_installs():
 def test_skill_uses_uv_scoped_python_examples():
     content = read_text(SKILL_MD)
     assert "uv run --python .venv/bin/python python -V" in content
-    assert "uv run --python <selected_python> python -c \"import mindspore as ms; print(ms.__version__)\"" in content
-    assert "uv run --python <selected_python> python scripts/pta_compat_lookup.py" in content
+    assert "selected_env_root" in content
+    assert "selected_python_path" in content
+    assert "uv run --python <selected_python_path> python -c \"import mindspore as ms; print(ms.__version__)\"" in content
+    assert "uv run --python <selected_python_path> python <setup_agent_skill_root>/scripts/pta_compat_lookup.py" in content
+    assert "not from the user work dir" in content
+    assert "<selected_python>" not in content
 
 
 def test_framework_remediation_uses_uv_scoped_python_and_installs():
     content = read_text(REFERENCES_DIR / "framework-remediation.md")
-    assert "uv run --python <selected_python> python -c \"import mindspore as ms; print(ms.__version__)\"" in content
-    assert "uv run --python <selected_python> python -c \"import torch; print(torch.__version__)\"" in content
-    assert "uv pip install --python <selected_python> mindspore==<resolved_version>" in content
-    assert "uv pip install --python <selected_python> <package>" in content
+    assert "uv run --python <selected_python_path> python -c \"import mindspore as ms; print(ms.__version__)\"" in content
+    assert "uv run --python <selected_python_path> python -c \"import torch; print(torch.__version__)\"" in content
+    assert "uv pip install --python <selected_python_path> mindspore==<resolved_version>" in content
+    assert "uv pip install --python <selected_python_path> <package>" in content
+    assert "uv run --python <selected_python_path> python <setup_agent_skill_root>/scripts/pta_compat_lookup.py" in content
+    assert "Do not resolve the helper path relative" in content
+    assert "to the user work dir." in content
+    assert "<selected_python>" not in content
 
 
 def test_execution_contract_uses_uppercase_status_examples():
@@ -277,9 +285,9 @@ def test_skill_points_missing_system_components_to_hiascend_download_portal():
 def test_skill_installs_missing_frameworks_inside_uv():
     content = read_text(REFERENCES_DIR / "framework-remediation.md")
     assert "Missing package handling:" in content
-    assert "`uv pip install --python <selected_python> mindspore==<resolved_version>`" in content
-    assert "`uv pip install --python <selected_python> torch==<resolved_torch>`" in content
-    assert "`uv pip install --python <selected_python> torch_npu==<resolved_torch_npu>`" in content
+    assert "`uv pip install --python <selected_python_path> mindspore==<resolved_version>`" in content
+    assert "`uv pip install --python <selected_python_path> torch==<resolved_torch>`" in content
+    assert "`uv pip install --python <selected_python_path> torch_npu==<resolved_torch_npu>`" in content
 
 
 def test_skill_uses_task_type_to_gate_runtime_checks():
@@ -290,7 +298,7 @@ def test_skill_uses_task_type_to_gate_runtime_checks():
     assert "install missing runtime dependencies directly inside the selected `uv`" in content
     assert "`ModuleNotFoundError` or" in content
     assert "`ImportError` for an installable Python package" in content
-    assert "`uv pip install --python <selected_python> <package>`" in content
+    assert "`uv pip install --python <selected_python_path> <package>`" in content
 
 
 def test_skill_adds_model_first_workdir_artifact_phase():
@@ -323,7 +331,7 @@ def test_skill_uses_snapshot_download_when_no_local_model_directory_exists():
     assert "do not treat authentication or permission failures as mirror candidates" in content
     assert "report a download/auth failure" in content
     assert "snapshot_download(repo_id='org/model'" in content
-    assert "HF_ENDPOINT=https://hf-mirror.com uv run" in content
+    assert "HF_ENDPOINT=https://hf-mirror.com uv run --python <selected_python_path>" in content
 
 
 def test_skill_checks_training_scripts_and_checkpoints_after_model_selection():
@@ -371,7 +379,7 @@ def test_skill_uses_cann_first_framework_resolution():
     assert "Load `references/framework-remediation.md` before changing framework" in skill_content
     assert "Treat the detected CANN version as the primary selector for" in content
     assert "1. Detect the current CANN version from the system-layer evidence" in content
-    assert "2. Detect the selected `uv` environment Python version" in content
+    assert "2. Detect the interpreter version from `selected_python_path`" in content
     assert "3. Resolve compatible framework candidates from" in content
     assert "`references/ascend-compat.md`" in content
     assert "4. For MindSpore only, if the local table does not classify the tuple, look up" in content
@@ -448,7 +456,9 @@ def test_skill_documents_console_only_contract():
     assert "- framework compatibility reasoning" in content
     assert "- recommended compatible version(s)" in content
     assert "- whether a replacement was offered and whether the user confirmed it" in content
-    assert "- direct `uv pip install --python ...` remediation inside the selected `uv` environment" in content
+    assert "- selected environment root" in content
+    assert "- selected interpreter path" in content
+    assert "- direct `uv pip install --python <selected_python_path> ...` remediation inside the selected `uv` environment" in content
     assert "- Python packages installed to recover a failed framework import or smoke test" in content
     assert "- framework package installs or replacements performed inside the selected `uv`" in content
     assert "driver or" in content

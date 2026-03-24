@@ -988,6 +988,94 @@ Files changed:
      - Added regression checks for `uv`-scoped command examples
      - Added regression checks for uppercase streaming status examples
 
+### 2026-03-24 - Selected uv environment contract tightened to absolute interpreter paths
+
+Trigger:
+- `uv pip install --python ...` installs into the interpreter it is given, so
+  the real failure mode was an ambiguous contract around what the selected
+  target actually is.
+- The skill still used `<selected_python>` as a placeholder, which could be
+  misread as a version string like `3.10` instead of the chosen virtual
+  environment interpreter path.
+- The workspace download examples also still assumed a fixed `.venv` name
+  instead of the user-confirmed environment that may have been reused.
+
+Files changed:
+
+1. `skills/setup-agent/SKILL.md`
+   - Description: Main execution prompt used by the model
+   - Change:
+     - Added an explicit post-selection contract for `selected_env_root` and
+       `selected_python_path`
+     - Changed Gate 5 wording so Python facts are derived from the selected
+       interpreter path rather than from an abstract "selected Python version"
+     - Replaced framework and PTA examples with
+       `uv run --python <selected_python_path> ...`
+
+2. `skills/setup-agent/references/framework-remediation.md`
+   - Description: Framework-layer execution reference
+   - Change:
+     - Replaced `<selected_python>` with `<selected_python_path>` throughout
+     - Required all `uv pip install` and `uv run` operations to target the
+       selected interpreter path explicitly
+
+3. `skills/setup-agent/references/workspace-discovery.md`
+   - Description: Workspace download and artifact discovery reference
+   - Change:
+     - Replaced `.venv/bin/python` download examples with
+       `<selected_python_path>` so reused environments stay valid
+
+4. `skills/setup-agent/references/execution-contract.md`
+   - Description: Runtime UX and reporting contract
+   - Change:
+     - Added selected environment root and selected interpreter path to the
+       required console evidence
+     - Tightened install reporting to show the selected interpreter path in
+       `uv pip install --python ...` remediation
+
+5. `skills/setup-agent/tests/test_references.py`
+   - Description: Behavior-contract tests for the skill prompt and references
+   - Change:
+     - Added regression checks for `selected_env_root` and
+       `selected_python_path`
+     - Added negative coverage so `<selected_python>` no longer remains in the
+       execution examples
+
+### 2026-03-24 - PTA helper path resolved from the skill root instead of the user workdir
+
+Trigger:
+- The PTA fallback helper was still documented as `scripts/pta_compat_lookup.py`,
+  which only works if the current working directory happens to be the
+  `setup-agent` skill root.
+- In real setup-agent runs, the current working directory is the user project
+  directory, so the fallback command could fail even when the helper script was
+  present in the installed skill.
+
+Files changed:
+
+1. `skills/setup-agent/SKILL.md`
+   - Description: Main execution prompt used by the model
+   - Change:
+     - Changed the PTA helper example to use
+       `<setup_agent_skill_root>/scripts/pta_compat_lookup.py`
+     - Added an explicit note that the helper path must be resolved from the
+       installed skill directory rather than from the user work dir
+
+2. `skills/setup-agent/references/framework-remediation.md`
+   - Description: Framework-layer execution reference
+   - Change:
+     - Changed the bundled PTA helper invocation to use the skill-root-based
+       path
+     - Added an explicit warning against resolving the helper path relative to
+       the user work dir
+
+3. `skills/setup-agent/tests/test_references.py`
+   - Description: Behavior-contract tests for the skill prompt and references
+   - Change:
+     - Added regression checks for the new skill-root-based helper path
+     - Added regression checks that the workdir-relative interpretation is
+       rejected in the documentation contract
+
 ## Latest Validation Snapshot
 
 Validation performed after the latest 2026-03-24 setup-agent consistency

@@ -63,13 +63,13 @@ If no candidate model directory exists, or the user declines all candidates:
 Example download pattern:
 
 ```bash
-uv run --python .venv/bin/python python -c "from huggingface_hub import snapshot_download; snapshot_download(repo_id='org/model', local_dir='./models/model', local_dir_use_symlinks=False)"
+uv run --python <selected_python_path> python -c "from huggingface_hub import snapshot_download; snapshot_download(repo_id='org/model', local_dir='./models/model', local_dir_use_symlinks=False)"
 ```
 
 Mirror retry pattern:
 
 ```bash
-HF_ENDPOINT=https://hf-mirror.com uv run --python .venv/bin/python python -c "from huggingface_hub import snapshot_download; snapshot_download(repo_id='org/model', local_dir='./models/model', local_dir_use_symlinks=False)"
+HF_ENDPOINT=https://hf-mirror.com uv run --python <selected_python_path> python -c "from huggingface_hub import snapshot_download; snapshot_download(repo_id='org/model', local_dir='./models/model', local_dir_use_symlinks=False)"
 ```
 
 Record whether the selected model came from:

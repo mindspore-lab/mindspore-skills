@@ -184,7 +184,12 @@ If the user wants a new environment:
 - ask which Python version to use
 - only proceed after the user answers
 
-Use the selected environment consistently, for example:
+After the user confirms which environment to use, resolve and record:
+- `selected_env_root`: the absolute path to the chosen virtual environment
+- `selected_python_path`: the absolute path to that environment's interpreter
+  such as `<selected_env_root>/bin/python`
+
+Use the selected interpreter consistently, for example:
 
 ```bash
 uv venv .venv --python 3.10
@@ -217,7 +222,7 @@ framework validation and remediation.
 Use this order:
 
 1. Detect the current CANN version from the system-layer evidence
-2. Detect the selected `uv` environment Python version
+2. Detect the interpreter version from `selected_python_path`
 3. Resolve compatible framework candidates from `references/ascend-compat.md`
 4. For MindSpore only, if the local table cannot classify the tuple, check the
    official `https://www.mindspore.cn/versions` page for that release and use
@@ -234,8 +239,8 @@ Use this order:
 Run:
 
 ```bash
-uv run --python <selected_python> python -c "import mindspore as ms; print(ms.__version__)" 2>/dev/null
-uv run --python <selected_python> python -c "import mindspore as ms; ms.set_context(device_target='Ascend'); print('mindspore_ascend_ok')" 2>/dev/null
+uv run --python <selected_python_path> python -c "import mindspore as ms; print(ms.__version__)" 2>/dev/null
+uv run --python <selected_python_path> python -c "import mindspore as ms; ms.set_context(device_target='Ascend'); print('mindspore_ascend_ok')" 2>/dev/null
 ```
 
 Then follow `references/framework-remediation.md`:
@@ -257,9 +262,9 @@ recommending installation or replacement.
 Run:
 
 ```bash
-python -c "import torch; print(torch.__version__)" 2>/dev/null
-python -c "import torch_npu; print(torch_npu.__version__)" 2>/dev/null
-python -c "import torch, torch_npu; x=torch.tensor([1.0]).npu(); print('torch_npu_ok', x)" 2>/dev/null
+uv run --python <selected_python_path> python -c "import torch; print(torch.__version__)" 2>/dev/null
+uv run --python <selected_python_path> python -c "import torch_npu; print(torch_npu.__version__)" 2>/dev/null
+uv run --python <selected_python_path> python -c "import torch, torch_npu; x=torch.tensor([1.0]).npu(); print('torch_npu_ok', x)" 2>/dev/null
 ```
 
 Then follow `references/framework-remediation.md`:
@@ -271,8 +276,11 @@ Then follow `references/framework-remediation.md`:
 Use the bundled helper when deterministic PTA lookup is needed:
 
 ```bash
-uv run --python <selected_python> python scripts/pta_compat_lookup.py --cann <detected_cann> --torch <installed_or_target_torch> --torch-npu <installed_or_target_torch_npu> --python <python_version> --remote-fallback
+uv run --python <selected_python_path> python <setup_agent_skill_root>/scripts/pta_compat_lookup.py --cann <detected_cann> --torch <installed_or_target_torch> --torch-npu <installed_or_target_torch_npu> --python <python_version> --remote-fallback
 ```
+
+Resolve `<setup_agent_skill_root>` from the installed `setup-agent` skill
+directory, not from the user work dir.
 
 If both framework paths are unhealthy, report both independently.
 
