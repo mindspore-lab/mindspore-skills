@@ -1,0 +1,1702 @@
+[
+  {
+    "issue_id": "41904",
+    "title": "[BUG][OPS] CANN包升级8.5 0116, mint.sqrt反向连续求导出现异常值-org-issues-AtomGit | GitCode",
+    "op_name": "sqrt",
+    "env": {
+      "device": "cpu",
+      "ms_commit": "",
+      "cann_version": ""
+    },
+    "root_cause": "",
+    "fix_solution": "",
+    "fix_pr": "",
+    "introduction_type": "",
+    "introduction_pr": "",
+    "status": "DONE",
+    "source_file": "gitcode-com-mindspore-org-issues-issues-41904.md"
+  },
+  {
+    "issue_id": "41908",
+    "title": "【回黄每日构建】【MindFormers】【功能模块】L0-test parallel linear.py::TestParallelLinear::test parallel linear quantization 和 L0-test gpt weight consistency.py::test weight consistency check 用例失败-org-issues-AtomGit | GitCode",
+    "op_name": "",
+    "env": {
+      "device": "Ascend",
+      "ms_commit": "",
+      "cann_version": "8.5.0.B106-20260120030006"
+    },
+    "root_cause": "",
+    "fix_solution": "",
+    "fix_pr": "",
+    "introduction_type": "",
+    "introduction_pr": "",
+    "status": "DONE",
+    "source_file": "gitcode-com-mindspore-org-issues-issues-41908.md"
+  },
+  {
+    "issue_id": "41913",
+    "title": "门禁用例报错test ops group cases.py::test reduction op group case level0,test ops group cases.py::test unary op group case level0",
+    "op_name": "sum",
+    "env": {
+      "device": "910B",
+      "ms_commit": "",
+      "cann_version": "20251225"
+    },
+    "root_cause": "问题：门禁用例报错test_ops_group_cases.py::test_reduction_op_group_case_level0,test_ops_group_cases.py::test_unary_op_group_case_level0\n\n根因：\n\n1、mint.sum新加了float64的标量tensor测试场景，本地未充分验证，实际算子反向并不支持",
+    "fix_solution": "1、下掉该测试场景",
+    "fix_pr": "https://gitee.com/mindspore/mindspore/pulls/91551",
+    "introduction_type": "测试新增测试场景",
+    "introduction_pr": "https://gitee.com/mindspore/mindspore/pulls/91486",
+    "status": "DONE",
+    "source_file": "gitcode-com-mindspore-org-issues-issues-41913.md"
+  },
+  {
+    "issue_id": "41916",
+    "title": "torch对标性能看护: 虚拟内存 torch/ms分别执行10次，取执行时间、释放的内存均值比较,比较失败",
+    "op_name": "sin",
+    "env": {
+      "device": "910B",
+      "ms_commit": "99b2d69d3c44",
+      "cann_version": "cann_9.0.0_20260210"
+    },
+    "root_cause": "",
+    "fix_solution": "",
+    "fix_pr": "",
+    "introduction_type": "",
+    "introduction_pr": "",
+    "status": "DONE",
+    "source_file": "gitcode-com-mindspore-org-issues-issues-41916.md"
+  },
+  {
+    "issue_id": "41918",
+    "title": "change the code owner of frontend code-org-issues-AtomGit | GitCode",
+    "op_name": "",
+    "env": {
+      "device": "",
+      "ms_commit": "",
+      "cann_version": ""
+    },
+    "root_cause": "",
+    "fix_solution": "",
+    "fix_pr": "",
+    "introduction_type": "",
+    "introduction_pr": "",
+    "status": "DONE",
+    "source_file": "gitcode-com-mindspore-org-issues-issues-41918.md"
+  },
+  {
+    "issue_id": "41919",
+    "title": "通信算子get group size输入参数为不匹配的字符串，报错类型由runtime改为valueerror",
+    "op_name": "",
+    "env": {
+      "device": "",
+      "ms_commit": "",
+      "cann_version": "CANN_8.5.0/20260105/"
+    },
+    "root_cause": "",
+    "fix_solution": "",
+    "fix_pr": "",
+    "introduction_type": "",
+    "introduction_pr": "",
+    "status": "DONE",
+    "source_file": "gitcode-com-mindspore-org-issues-issues-41919.md"
+  },
+  {
+    "issue_id": "41920",
+    "title": "mint.atan2 fp16偶现精度问题",
+    "op_name": "atan2",
+    "env": {
+      "device": "Ascend",
+      "ms_commit": "99b2d69d3c4470ffac1677c53a009231666d869c",
+      "cann_version": "20260105"
+    },
+    "root_cause": "",
+    "fix_solution": "",
+    "fix_pr": "",
+    "introduction_type": "",
+    "introduction_pr": "",
+    "status": "DONE",
+    "source_file": "gitcode-com-mindspore-org-issues-issues-41920.md"
+  },
+  {
+    "issue_id": "41921",
+    "title": "【自提单】【MIndformers】【训练】动态图attention中含有transformer config中已经删除的参数导致训练报错-org-issues-AtomGit | GitCode",
+    "op_name": "",
+    "env": {
+      "device": "Ascend",
+      "ms_commit": "",
+      "cann_version": ""
+    },
+    "root_cause": "问题：动态图attention中含有transformer_config中已经删除的参数导致训练报错\n\n根因：\n\n先前分支代码transformer_config中包含已经删除的参数，合入主分支后报错",
+    "fix_solution": "1、删除已经删除的参数逻辑",
+    "fix_pr": "",
+    "introduction_type": "特性合入引入",
+    "introduction_pr": "",
+    "status": "DONE",
+    "source_file": "gitcode-com-mindspore-org-issues-issues-41921.md"
+  },
+  {
+    "issue_id": "41922",
+    "title": "动态图rope utils仅与静态图pynative分支对齐精度，未与静态图master分支对齐-org-issues-AtomGit | GitCode",
+    "op_name": "",
+    "env": {
+      "device": "Ascend",
+      "ms_commit": "",
+      "cann_version": ""
+    },
+    "root_cause": "问题：动态图rope_utils仅与静态图pynative分支对齐精度，未与静态图master分支对齐\n\n根因：\n\n1、 动态图rope_utils仅与静态图pynative分支对齐精度，未与静态图master分支对齐",
+    "fix_solution": "1、重新与与静态图pynative分支对齐精度",
+    "fix_pr": "",
+    "introduction_type": "特性合入引入",
+    "introduction_pr": "",
+    "status": "DONE",
+    "source_file": "gitcode-com-mindspore-org-issues-issues-41922.md"
+  },
+  {
+    "issue_id": "41924",
+    "title": "msrun rank id重排失败",
+    "op_name": "rank",
+    "env": {
+      "device": "ASCEND",
+      "ms_commit": "5cc4aadb830e7ca4c2a53cb2fc2acc5ff327ef2f",
+      "cann_version": ""
+    },
+    "root_cause": "",
+    "fix_solution": "",
+    "fix_pr": "",
+    "introduction_type": "",
+    "introduction_pr": "",
+    "status": "DONE",
+    "source_file": "gitcode-com-mindspore-org-issues-issues-41924.md"
+  },
+  {
+    "issue_id": "41925",
+    "title": "[Bug]python3.12，mindone diffusers下的generic modules部分模型训练精度不达标-org-issues-AtomGit | GitCode",
+    "op_name": "",
+    "env": {
+      "device": "Ascend",
+      "ms_commit": "",
+      "cann_version": "CANN_8.5.0/20260105"
+    },
+    "root_cause": "问题：部分模型精度未达标\n\n根因：mindone版本过老，模型未切换为mint算子，精度不足，并且未固定随机性，无法每次复现",
+    "fix_solution": "1. 修改mindone代码，固定随机性，并将精度未达标模型切换为mint算子",
+    "fix_pr": "",
+    "introduction_type": "代码未适配",
+    "introduction_pr": "",
+    "status": "DONE",
+    "source_file": "gitcode-com-mindspore-org-issues-issues-41925.md"
+  },
+  {
+    "issue_id": "41926",
+    "title": "部分进程创建通信组用例因为python升级超时报错",
+    "op_name": "partial",
+    "env": {
+      "device": "ascend",
+      "ms_commit": "011c1d95aa8e673866a284408f3198c470f05ddf",
+      "cann_version": ""
+    },
+    "root_cause": "问题：异常用例，在非rank_list的进程中调用`mindspore.communication.create_group`接口创建通信组会出现coredump。\n\n根因：\n\n更新python版本3.10 -> 3.12。\n\nPython 3.12 重构了Py_FatalError等 C API 的行为，从“打印错误后退出”改为“直接触发 SIGABRT 生成 coredump”，导致调用`pybind11_fail`抛出异常直接coredump。\n\n#",
+    "fix_solution": "修改异常通过thow value_error的方式抛出。\n\n#",
+    "fix_pr": "https://gitee.com/mindspore/mindspore/pulls/91478",
+    "introduction_type": "测试新增测试场景",
+    "introduction_pr": "",
+    "status": "DONE",
+    "source_file": "gitcode-com-mindspore-org-issues-issues-41926.md"
+  },
+  {
+    "issue_id": "41927",
+    "title": "mindone开启编译缓存报错：SetScalarToAttributeProto ir] Unsupported scalar type: FP16Imm",
+    "op_name": "",
+    "env": {
+      "device": "",
+      "ms_commit": "",
+      "cann_version": "CANN_8.5.0/20260105/"
+    },
+    "root_cause": "",
+    "fix_solution": "",
+    "fix_pr": "",
+    "introduction_type": "",
+    "introduction_pr": "",
+    "status": "DONE",
+    "source_file": "gitcode-com-mindspore-org-issues-issues-41927.md"
+  },
+  {
+    "issue_id": "41929",
+    "title": "使用 AlexNet，加载 onnx 模型,运行并比较结果,偶现nan值",
+    "op_name": "",
+    "env": {
+      "device": "CPU",
+      "ms_commit": "011c1d95a",
+      "cann_version": ""
+    },
+    "root_cause": "",
+    "fix_solution": "",
+    "fix_pr": "",
+    "introduction_type": "",
+    "introduction_pr": "",
+    "status": "DONE",
+    "source_file": "gitcode-com-mindspore-org-issues-issues-41929.md"
+  },
+  {
+    "issue_id": "41930",
+    "title": "imod的input和other是5维时，正向e2e性能没有达到标杆的1.2倍",
+    "op_name": "",
+    "env": {
+      "device": "910b",
+      "ms_commit": "011c1d95aa",
+      "cann_version": "cann_8.5.0_20260105"
+    },
+    "root_cause": "问题：imod性能用例失败\n\n根因：\n\n偶现问题",
+    "fix_solution": "重跑15次均pass",
+    "fix_pr": "",
+    "introduction_type": "环境问题",
+    "introduction_pr": "",
+    "status": "DONE",
+    "source_file": "gitcode-com-mindspore-org-issues-issues-41930.md"
+  },
+  {
+    "issue_id": "41931",
+    "title": "mint.nn.Linear fp32 910b偶现精度问题",
+    "op_name": "linear",
+    "env": {
+      "device": "910b",
+      "ms_commit": "011c1d95aa8e673866a284408f3198c470f05ddf",
+      "cann_version": "20260105"
+    },
+    "root_cause": "问题：mint.nn.Linear fp32 910b偶现精度问题\n\n根因：\n- 问题场景为大k轴的MatMul处理，k轴为11907，因此对于每个输出元素，都要经历11907次累加处理\n\n[Image: ]\n\n- 由于累加误差的影响，部分随机种子可能出现计算结果与标杆偏差大于设定阈值的情况，针对该情况根据累加次数适当放宽看护精度标准：\n\n[Image: ]\n\n####",
+    "fix_solution": "1、适当放宽反向看护精度\n\n####",
+    "fix_pr": "https://gitee.com/mindspore/mindspore/pulls/70920",
+    "introduction_type": "",
+    "introduction_pr": "",
+    "status": "DONE",
+    "source_file": "gitcode-com-mindspore-org-issues-issues-41931.md"
+  },
+  {
+    "issue_id": "41932",
+    "title": "ops.pow fp32存在精度问题",
+    "op_name": "pow",
+    "env": {
+      "device": "Ascend",
+      "ms_commit": "011c1d95aa8e673866a284408f3198c470f05ddf",
+      "cann_version": "20260105"
+    },
+    "root_cause": "问题：ops.pow在4d计算时反向精度问题\n\n根因：\n\n1、 反向计算使用select操作，A2后端GE场景出现内存踩踏问题",
+    "fix_solution": "1、 消除Select操作",
+    "fix_pr": "https://gitee.com/mindspore/mindspore/pulls/91490",
+    "introduction_type": "特性合入引入",
+    "introduction_pr": "https://gitee.com/mindspore/mindspore/pulls/91387",
+    "status": "DONE",
+    "source_file": "gitcode-com-mindspore-org-issues-issues-41932.md"
+  },
+  {
+    "issue_id": "41933",
+    "title": "CPU后端trace算子偶现精度异常，固定--randomly-seed=1767963664必现精度异常",
+    "op_name": "trace",
+    "env": {
+      "device": "CPU",
+      "ms_commit": "011c1d95aa8e673866a284408f3198c470f05ddf",
+      "cann_version": ""
+    },
+    "root_cause": "问题：[Bug]:CPU后端trace算子偶现精度异常，固定--randomly-seed=1767963664必现精度异常\n\n根因：\n\nmindspore的trace cpu算子走fp16存在精度累积问题，与x86上的tf的fp32计算精度存在误差。",
+    "fix_solution": "x86环境trace pynative cpu算子的fp16版本精度与tf的fp32精度无法对上，重新提升精度至fp32处理后转换回fp16。",
+    "fix_pr": "https://gitee.com/mindspore/mindspore/pulls/91548",
+    "introduction_type": "测试新增测试场景",
+    "introduction_pr": "https://gitee.com/mindspore/mindspore/pulls/89875",
+    "status": "DONE",
+    "source_file": "gitcode-com-mindspore-org-issues-issues-41933.md"
+  },
+  {
+    "issue_id": "41934",
+    "title": "nn.adam ascend后端计算结果与标杆不一致",
+    "op_name": "adam",
+    "env": {
+      "device": "ascend",
+      "ms_commit": "011c1d95aa8e673866a284408f3198c470f05ddf",
+      "cann_version": "20260105"
+    },
+    "root_cause": "问题：910B mindspore和tf结果不一致\n\n根因：\n\n1、tensorflow 2.18的内部实现与2.15有变化，需要把dtype传入，否则会自动升精度",
+    "fix_solution": "1、在forward_tensorflow_impl里面传入dtype进行强制指定数据类型。具体tf.keras.layers.Dense(xxx, dtype=tf.float16) dtype应当作为参数进行传入，如果全局相关测试都是tf.float16可以hardcode修改",
+    "fix_pr": "https://gitee.com/mindspore/mindspore/pulls/70920",
+    "introduction_type": "环境问题",
+    "introduction_pr": "",
+    "status": "DONE",
+    "source_file": "gitcode-com-mindspore-org-issues-issues-41934.md"
+  },
+  {
+    "issue_id": "41935",
+    "title": "O1, 自动并行，8p模式，SplitFlattenMulDenseConstantNet， 偶现core在SetMsInternalEnableCustomKernelList",
+    "op_name": "",
+    "env": {
+      "device": "ascend",
+      "ms_commit": "",
+      "cann_version": "CANN_8.5.0/20260105/"
+    },
+    "root_cause": "问题：训练用例偶现SetMsInternalEnalbeCustomKernelList段错误\n\n根因：MindSpore新版本支持多线程，原来这个函数没有多线程保护，支持多线程后，有概率会同时修改内部的set结构造成段错误\n\n训练用例不应该走到推理流程中，由于判断optional使用不对，不是判断是否推理模式，而是只要有值就会走到SetMsInternalEnableCustomKernelList函数中。",
+    "fix_solution": "1、训练用例走进推理流程修改optional使用，判断取值value后判断\n\n2、使用原子操作控制多线程下只对成员变量进行一次初始化",
+    "fix_pr": "https://gitee.com/mindspore/mindspore/pulls/91480",
+    "introduction_type": "",
+    "introduction_pr": "",
+    "status": "DONE",
+    "source_file": "gitcode-com-mindspore-org-issues-issues-41935.md"
+  },
+  {
+    "issue_id": "41936",
+    "title": "门禁用例失败：test jacfwd.py::test jac multiple inputs multiple outputs cell graph[0]等用例， 报错：ValueError: For 'Select', condition.shape and input.shape need to broadcast.",
+    "op_name": "select",
+    "env": {
+      "device": "CPU",
+      "ms_commit": "",
+      "cann_version": ""
+    },
+    "root_cause": "",
+    "fix_solution": "",
+    "fix_pr": "",
+    "introduction_type": "",
+    "introduction_pr": "",
+    "status": "DONE",
+    "source_file": "gitcode-com-mindspore-org-issues-issues-41936.md"
+  },
+  {
+    "issue_id": "41937",
+    "title": "nn.sgd ascend报错Memcpy async failed, stream is not in current ctx",
+    "op_name": "sgd",
+    "env": {
+      "device": "ascend",
+      "ms_commit": "7675181c398e1372c360180db3f61d645f0361c2",
+      "cann_version": "20260104"
+    },
+    "root_cause": "问题：[Bug]:nn.sgd ascend报错Memcpy async failed, stream is not in current ctx\n\n根因：\n\ntorch_npu版本升级后，原本跑在CPU的torch对比用例执行在了npu上，这样同一进程内同时执行torch_npu和ms,导致ms执行报错",
+    "fix_solution": "不涉及",
+    "fix_pr": "",
+    "introduction_type": "用例未适配",
+    "introduction_pr": "",
+    "status": "DONE",
+    "source_file": "gitcode-com-mindspore-org-issues-issues-41937.md"
+  },
+  {
+    "issue_id": "41938",
+    "title": "用例deepseek v3网络，双机16卡，加载分布式权重的时候网络训练失败 报错：给到runtime的tensor设备类型不符合预期",
+    "op_name": "",
+    "env": {
+      "device": "910B",
+      "ms_commit": "",
+      "cann_version": ""
+    },
+    "root_cause": "",
+    "fix_solution": "",
+    "fix_pr": "https://gitee.com/mindspore/mindspore/pulls/91482",
+    "introduction_type": "",
+    "introduction_pr": "",
+    "status": "DONE",
+    "source_file": "gitcode-com-mindspore-org-issues-issues-41938.md"
+  },
+  {
+    "issue_id": "41939",
+    "title": "[Bug][兼容性测试]:nn.Hardtanh报错超时-org-issues-AtomGit | GitCode",
+    "op_name": "hardtanh",
+    "env": {
+      "device": "910B",
+      "ms_commit": "5cc4aadb830e7ca4c2a53cb2fc2acc5ff327ef2f",
+      "cann_version": "20251104"
+    },
+    "root_cause": "",
+    "fix_solution": "",
+    "fix_pr": "",
+    "introduction_type": "",
+    "introduction_pr": "",
+    "status": "DONE",
+    "source_file": "gitcode-com-mindspore-org-issues-issues-41939.md"
+  },
+  {
+    "issue_id": "41940",
+    "title": "门禁用例报错test clamp.py::test clamp overload error report[1]",
+    "op_name": "",
+    "env": {
+      "device": "CPU",
+      "ms_commit": "",
+      "cann_version": "20251225"
+    },
+    "root_cause": "问题：报错与预期不一致\n\n根因：\n\n报错不一致",
+    "fix_solution": "用例拆分到对应动静态图对应重载模块异常场景测试文件处，抛异常内容进行对应适配\n\n动态图：tests/st/tensor/overload/test_parse_exception.py\n\n静态图：tests/st/compiler/functional_overload/test_functional_method.py",
+    "fix_pr": "https://gitee.com/mindspore/mindspore/pulls/91392",
+    "introduction_type": "Bugfix修复引入",
+    "introduction_pr": "https://gitee.com/mindspore/mindspore/pulls/91392",
+    "status": "DONE",
+    "source_file": "gitcode-com-mindspore-org-issues-issues-41940.md"
+  },
+  {
+    "issue_id": "41941",
+    "title": "infer类推理算子报错The current operator needs to be supplemented with an adapter.",
+    "op_name": "",
+    "env": {
+      "device": "Ascend",
+      "ms_commit": "",
+      "cann_version": "20250428、20250724"
+    },
+    "root_cause": "问题：在CANN20250428、20250724版本。infer类推理算子报错The current operator needs to be supplemented with an adapter.\n根因：\n\n1、 老CANN包中缺少symbol: aclrtGetResInCurrentThread，算子库因升级了atb源码依赖这个。所以无法兼容8.3之前的CANN包",
+    "fix_solution": "1、无法兼容，ccb评审，评审结论如下：\n\n昇腾计算联合CCB结论20250120：vllm-mindspore推理配套不在昇腾计算推理解决方案中维护，可以自行决定配套与兼容关系。我们当前客户整体使用vllm-mindspore的配套发布件，r2.7.1之后mindspore版本推理不兼容CANN 8.2.0.RC1影响可控。",
+    "fix_pr": "",
+    "introduction_type": "测试新增测试场景",
+    "introduction_pr": "",
+    "status": "DONE",
+    "source_file": "gitcode-com-mindspore-org-issues-issues-41941.md"
+  },
+  {
+    "issue_id": "41942",
+    "title": "版本用例执行失败：test hal memory.py::test runtime max memory allocated",
+    "op_name": "max",
+    "env": {
+      "device": "ascend",
+      "ms_commit": "",
+      "cann_version": ""
+    },
+    "root_cause": "问题：用例执行失败\n\n根因：\n\n由于门禁精准触发无法触发910A，且用例还是LEVEL1不会跑，导致代码语法问题没有被门禁识别",
+    "fix_solution": "修复语法问题",
+    "fix_pr": "https://gitee.com/mindspore/mindspore/pulls/91439",
+    "introduction_type": "特性合入引入",
+    "introduction_pr": "https://gitee.com/mindspore/mindspore/pulls/91346",
+    "status": "DONE",
+    "source_file": "gitcode-com-mindspore-org-issues-issues-41942.md"
+  },
+  {
+    "issue_id": "41943",
+    "title": "Cell实例中使用属性引用异常场景，非Parameter类型数据修改（syntax white list）, 报错RuntimeError: Output idx 0 of node @kernel graph2:CNode 5{[0]: ValueNode<Primitive> PrimFunc Assign",
+    "op_name": "assign",
+    "env": {
+      "device": "CPU",
+      "ms_commit": "",
+      "cann_version": "CANN_8.5.0/20251225/"
+    },
+    "root_cause": "问题：mac环境出现deviceaddress未创建\n\n根因：\n\nmac arm机器，ms计算出的runtime线程数为1，执行流程退化到kernel actor的执行方式，此时会走入data_prepare_actor初始化ref算子的流程，需要校验ref的输入输出地址，而此时如果存在any类型输入，device address的创建会延迟到图执行的时候，因此data_prepare_actor中判断时地址还未创建。",
+    "fix_solution": "any输入的图不需要校验ref地址",
+    "fix_pr": "https://gitee.com/mindspore/mindspore/pulls/91448",
+    "introduction_type": "特性合入引入",
+    "introduction_pr": "https://gitee.com/mindspore/mindspore/pulls/90625",
+    "status": "DONE",
+    "source_file": "gitcode-com-mindspore-org-issues-issues-41943.md"
+  },
+  {
+    "issue_id": "41944",
+    "title": "【自提单】【MindFormers】训练前向推理开启pp并行时报错-org-issues-AtomGit | GitCode",
+    "op_name": "",
+    "env": {
+      "device": "Ascend",
+      "ms_commit": "",
+      "cann_version": ""
+    },
+    "root_cause": "问题：训练前向pp并行下报错\n\n根因：\n1. trainer中拦截\n2. 取消拦截后存在精度问题，需要配置对应context\n\n#",
+    "fix_solution": "[https://gitee.com/mindspore/mindformers/pulls/7965](https://gitee.com/mindspore/mindformers/pulls/7965)\n\n[https://gitee.com/mindspore/mindformers/pulls/7909](https://gitee.com/mindspore/mindformers/pulls/7909)\n1. 在训练前向模式下取消拦截\n2. 在pp > 1时，增加boardcast_pipeline_result=True的context\n\n#",
+    "fix_pr": "",
+    "introduction_type": "",
+    "introduction_pr": "",
+    "status": "DONE",
+    "source_file": "gitcode-com-mindspore-org-issues-issues-41944.md"
+  },
+  {
+    "issue_id": "41945",
+    "title": "自定义算子asdfft在旧CANN包报错找不到libasdsip.so路径",
+    "op_name": "fft",
+    "env": {
+      "device": "Ascend",
+      "ms_commit": "abadfa2e5fd",
+      "cann_version": "20251104"
+    },
+    "root_cause": "问题：mindspore兼容性测试，使用新版本ms+旧cann（C23）asdsip算子加载失败\n\n根因：\n\n新版本的cann的路径发生改变，ms适配新版cann包，asdsip的路径发生改变，导致在旧cann无法执行",
+    "fix_solution": "1、适配asdsip的路径，根据新旧cann包的版本获取路径，使其兼容新旧cann包",
+    "fix_pr": "",
+    "introduction_type": "CANN升级",
+    "introduction_pr": "",
+    "status": "DONE",
+    "source_file": "gitcode-com-mindspore-org-issues-issues-41945.md"
+  },
+  {
+    "issue_id": "41946",
+    "title": "[Bug] 盘古 38bv3网络，训练失败报错：AttributeError: 'NoneType' object has no attribute 'item'-org-issues-AtomGit | GitCode",
+    "op_name": "",
+    "env": {
+      "device": "ASCEND",
+      "ms_commit": "f91482ed70c601877918320a47ec76f5148947d3",
+      "cann_version": "CANN"
+    },
+    "root_cause": "问题：ms改动导致网络报错\n\n根因：\n\n1、 二分确认，ms改动引起，0106ms包必现，0107不复现",
+    "fix_solution": "1、0107ms包不复现",
+    "fix_pr": "",
+    "introduction_type": "Bugfix修复引入",
+    "introduction_pr": "",
+    "status": "DONE",
+    "source_file": "gitcode-com-mindspore-org-issues-issues-41946.md"
+  },
+  {
+    "issue_id": "41947",
+    "title": "[Bug] 盘古vlm网络 开确定性 8p，训练失败报错：RuntimeError: Lazy Async copy failed. -org-issues-AtomGit | GitCode",
+    "op_name": "copy",
+    "env": {
+      "device": "ASCEND",
+      "ms_commit": "f91482ed70c601877918320a47ec76f5148947d3",
+      "cann_version": "CANN"
+    },
+    "root_cause": "问题：开同步后的真实报错：vlm网络报错SyncStream failed for op aclnnIndexPutImpl\n\n根因：\n\n1、 二分定位到是cann引入的问题（疑似cann相关的环境问题）。\n\n2. 用早于B100发版时间点的cann8.5，搭配任何一个ms都可以复现这个问题。\n\n3. 升级了B100 cann85，用0106失败版本的ms、msa跑多遍，都是可以跑通的，用0108的ms跑多遍，也是可以跑通的。",
+    "fix_solution": "1、问题不复现",
+    "fix_pr": "",
+    "introduction_type": "CANN升级",
+    "introduction_pr": "",
+    "status": "DONE",
+    "source_file": "gitcode-com-mindspore-org-issues-issues-41947.md"
+  },
+  {
+    "issue_id": "41948",
+    "title": "自定义算子在旧CANN包执行报错RuntimeError: Error building extension 'my ops'",
+    "op_name": "gelu",
+    "env": {
+      "device": "Ascend",
+      "ms_commit": "abadfa2e5fd",
+      "cann_version": "20250428"
+    },
+    "root_cause": "问题：自定义算子场景在老CANN包下编译失败\n\n根因：\n\n1、 aclrtDevResLimitType为CANN8.3版本新增符号\n\n2、 老版本编译需要依赖aclrtDevResLimitType符号",
+    "fix_solution": "1、通过编译宏隔开自定义算子特殊场景的编译报错",
+    "fix_pr": "https://gitee.com/mindspore/mindspore/pulls/91399",
+    "introduction_type": "CANN升级",
+    "introduction_pr": "https://gitee.com/mindspore/mindspore/pulls/90666",
+    "status": "DONE",
+    "source_file": "gitcode-com-mindspore-org-issues-issues-41948.md"
+  },
+  {
+    "issue_id": "41949",
+    "title": "门禁用例报错test functional method.py::test method too many parameters tests/st/compiler/functional overload",
+    "op_name": "",
+    "env": {
+      "device": "CPU",
+      "ms_commit": "",
+      "cann_version": "20251225"
+    },
+    "root_cause": "问题：报错变更\n\n根因：\n\n报错变更",
+    "fix_solution": "默认允许标量Tensor转Scalar的行为不应该改变Signature上的参数类型签名，其未拓展真正的Tensor类型支持（只是将标量Tensor视为Scalar处理）",
+    "fix_pr": "https://gitee.com/mindspore/mindspore/pulls/91392",
+    "introduction_type": "特性合入引入",
+    "introduction_pr": "https://gitee.com/mindspore/mindspore/pulls/91096",
+    "status": "DONE",
+    "source_file": "gitcode-com-mindspore-org-issues-issues-41949.md"
+  },
+  {
+    "issue_id": "41950",
+    "title": "[Bug]ascend910B4环境上unet conv3d.onnx使能aoe转换生成mindir模型后推理性能劣化-org-issues-AtomGit | GitCode",
+    "op_name": "",
+    "env": {
+      "device": "ascend",
+      "ms_commit": "",
+      "cann_version": "CANN_8.5.0/20251225"
+    },
+    "root_cause": "问题：历史看护模型性能劣化\n\n根因：\n\n1、CANN包更新，conv算子性能劣化",
+    "fix_solution": "1、更新CANN包",
+    "fix_pr": "",
+    "introduction_type": "CANN升级",
+    "introduction_pr": "",
+    "status": "DONE",
+    "source_file": "gitcode-com-mindspore-org-issues-issues-41950.md"
+  },
+  {
+    "issue_id": "41951",
+    "title": "构造GetNext动态shape网络多次执行的场景,用例执行时间从十分钟内涨至15分钟以上，导致用例被杀",
+    "op_name": "shape",
+    "env": {
+      "device": "ascend",
+      "ms_commit": "1b5fa541bb16",
+      "cann_version": ""
+    },
+    "root_cause": "",
+    "fix_solution": "",
+    "fix_pr": "",
+    "introduction_type": "",
+    "introduction_pr": "",
+    "status": "DONE",
+    "source_file": "gitcode-com-mindspore-org-issues-issues-41951.md"
+  },
+  {
+    "issue_id": "41952",
+    "title": "TensorDump位于网络中间位置, 且在循环外, 半自动并行, net中存在循环, mode设置为\"all\" 偶现core",
+    "op_name": "",
+    "env": {
+      "device": "Ascend",
+      "ms_commit": "",
+      "cann_version": "CANN_8.5.0/20251225/"
+    },
+    "root_cause": "问题：执行用例偶现core\n\n根因：\n\n1、 系统不支持多线程并发设置或读取环境变量\n\n2、MS存在部分环境变量设置，通信域异步初始化，HCCL会再通信组初始化是读取环境变量，产生并发访问。",
+    "fix_solution": "1、删除可能存在全局变量并发设置的操作\n\n2、适配用例。避免多次调用通信初始化接口，以及避免将环境变量相关设置操作放在通信初始化之前。",
+    "fix_pr": "https://gitee.com/mindspore/mindspore/pulls/91463",
+    "introduction_type": "测试漏测",
+    "introduction_pr": "",
+    "status": "DONE",
+    "source_file": "gitcode-com-mindspore-org-issues-issues-41952.md"
+  },
+  {
+    "issue_id": "41954",
+    "title": "ops.expm1/ops.log1p报错RuntimeError: When convert scalar to tensor, the scalar type: Complex128/Complex64 is invalid.",
+    "op_name": "expm1",
+    "env": {
+      "device": "Ascend",
+      "ms_commit": "abadfa2e5fd62bd8efe89b5641a3f66257773fa4",
+      "cann_version": "20251225"
+    },
+    "root_cause": "问题：ops.expm1/ops.log1p报错RuntimeError: When convert scalar to tensor, the scalar type: Complex128/Complex64 is invalid.\n\n根因：ScalarToTensor不支持complex类型\n\n###",
+    "fix_solution": "适配ScalarToTensor支持complex类型\n\n###",
+    "fix_pr": "https://gitee.com/mindspore/mindspore/pulls/91404",
+    "introduction_type": "特性合入引入",
+    "introduction_pr": "https://gitee.com/mindspore/mindspore/pulls/89877",
+    "status": "DONE",
+    "source_file": "gitcode-com-mindspore-org-issues-issues-41954.md"
+  },
+  {
+    "issue_id": "41955",
+    "title": "官网样例mindspore.ops.nsa compress attention报错TypeError: nsa compress attention() takes 9 positional arguments but 14 were given",
+    "op_name": "nsa",
+    "env": {
+      "device": "910B",
+      "ms_commit": "abadfa2e5fd6",
+      "cann_version": "cann_8.5.0_20260105"
+    },
+    "root_cause": "",
+    "fix_solution": "",
+    "fix_pr": "",
+    "introduction_type": "",
+    "introduction_pr": "",
+    "status": "DONE",
+    "source_file": "gitcode-com-mindspore-org-issues-issues-41955.md"
+  },
+  {
+    "issue_id": "41956",
+    "title": "门禁用例失败：test nsa compress attention.py::test nsa compress attention dynamic shape TEST OP 报错：AssertionError",
+    "op_name": "shape",
+    "env": {
+      "device": "ASCEND",
+      "ms_commit": "",
+      "cann_version": ""
+    },
+    "root_cause": "问题：门禁用例失败：test_nsa_compress_attention.py::test_nsa_compress_attention_dynamic_shape_TEST_OP 报错：AssertionError\n\n根因：\n\n1、cann侧aclnnNsaCompressAttention的确定性无法固定",
+    "fix_solution": "1、去除TEST_OP中的确定性计算对比场景，不再给cann兜底",
+    "fix_pr": "https://gitee.com/mindspore/mindspore/pulls/91409",
+    "introduction_type": "用例未适配",
+    "introduction_pr": "",
+    "status": "DONE",
+    "source_file": "gitcode-com-mindspore-org-issues-issues-41956.md"
+  },
+  {
+    "issue_id": "41958",
+    "title": "linux aarch64+ascend910b，python310环境。Build时配置的卡和Tensor的卡ID不一致，推理输出卡ID变为Tensor卡ID，跨卡推理失败。",
+    "op_name": "",
+    "env": {
+      "device": "ascend",
+      "ms_commit": "",
+      "cann_version": "http://mindspore-repo.csi.rnd.huawei.com/productrepo/HiAI/Milan_C25/20251225_atlas/"
+    },
+    "root_cause": "问题：tensor的device id与model的device id不同时，推理报错\n\n根因：\n\n1、代码中调用resetdevice导致其他卡没有初始化，从而拷贝失败",
+    "fix_solution": "1、删除多余的resetdevice操作",
+    "fix_pr": "",
+    "introduction_type": "Bugfix修复引入",
+    "introduction_pr": "",
+    "status": "DONE",
+    "source_file": "gitcode-com-mindspore-org-issues-issues-41958.md"
+  },
+  {
+    "issue_id": "41959",
+    "title": "Morph内部调用的函数包含*args, **kwargs入参时报错-org-issues-AtomGit | GitCode",
+    "op_name": "morph",
+    "env": {
+      "device": "Ascend",
+      "ms_commit": "",
+      "cann_version": ""
+    },
+    "root_cause": "问题：Morph内部调用的函数包含*args, **kwargs入参时报错\n根因：\n1、RewriterBeforeOptA中会消除由于函数中出现*args/**kwargs而产生的make_keyword_arg/extract_keyword_arg等算子。\n\n2. Morph算子的展开位于RewriterBeforeOptA之后，故如果Morph function中存在*args/**kwargs，产生的make_keyword_arg/extract_keyword_arg算子不会被消除。",
+    "fix_solution": "1、在RewriterAfterOptA中也对make_keyword_arg/extract_keyword_arg等算子进行消除。",
+    "fix_pr": "https://gitee.com/mindspore/mindspore/pulls/91387",
+    "introduction_type": "特性合入引入",
+    "introduction_pr": "https://gitee.com/mindspore/mindspore/pulls/82416",
+    "status": "DONE",
+    "source_file": "gitcode-com-mindspore-org-issues-issues-41959.md"
+  },
+  {
+    "issue_id": "41960",
+    "title": "【自提单】【MindFormers】【Mcore】静态图YarnRotaryEmbedding初始化与父类入参无法对应，初始化顺序有误-org-issues-AtomGit | GitCode",
+    "op_name": "",
+    "env": {
+      "device": "Ascend",
+      "ms_commit": "",
+      "cann_version": ""
+    },
+    "root_cause": "问题：静态图YarnRotaryEmbedding初始化与父类入参无法对应，初始化顺序有误\n\n根因：\n\n1、 该接口把super()__init__放在了__init__的最后，导致mscale被父类的计算结果覆盖，且未显式指定入参，初始化的入参和父类的入参对不上，导致参数传错",
+    "fix_solution": "1、将super()__init__挪到初始化的最前面，并显式指定入参",
+    "fix_pr": "",
+    "introduction_type": "特性合入引入",
+    "introduction_pr": "",
+    "status": "DONE",
+    "source_file": "gitcode-com-mindspore-org-issues-issues-41960.md"
+  },
+  {
+    "issue_id": "41961",
+    "title": "O1 matmul 半自动并行 输入策略：[a, b], [b, c]， 输出策略：[a, c*b]， 偶现core",
+    "op_name": "matmul",
+    "env": {
+      "device": "ascend",
+      "ms_commit": "",
+      "cann_version": "CANN_8.5.0/20251225/"
+    },
+    "root_cause": "问题：用例执行偶现coredump，且coredump栈里有图算符号mindspore::graphkernel::EnableDvmComm\n\n根因：通信初始化里多次调用EnableDvmComm，且调用线程为多线程场景，EnableDvmComm内部调用GraphKernelFlags::GetInstance，后者未做多线程保护，如果前面多线程调用存在并行执行场景的话，可能会出现线程冲突问题。",
+    "fix_solution": "通信初始化里只在MultiAscendCollectiveCommLib::Initialize里调用EnableDvmComm，其余部分改成使用指针进行判断，避免多次调用EnableDvmComm。",
+    "fix_pr": "https://gitee.com/mindspore/mindspore/pulls/91422",
+    "introduction_type": "特性合入引入",
+    "introduction_pr": "https://gitee.com/mindspore/mindspore/pulls/81663",
+    "status": "DONE",
+    "source_file": "gitcode-com-mindspore-org-issues-issues-41961.md"
+  },
+  {
+    "issue_id": "41962",
+    "title": "ranktable启动用例报错MindSpore does not support ranktable startup, please use msrun to start it.， 已废弃，但是资料未修改",
+    "op_name": "",
+    "env": {
+      "device": "ascend",
+      "ms_commit": "",
+      "cann_version": "CANN_8.5.0/20251225/"
+    },
+    "root_cause": "",
+    "fix_solution": "",
+    "fix_pr": "",
+    "introduction_type": "",
+    "introduction_pr": "",
+    "status": "DONE",
+    "source_file": "gitcode-com-mindspore-org-issues-issues-41962.md"
+  },
+  {
+    "issue_id": "41963",
+    "title": "model zoo CV 类 yolov5s 网络模型训练验证训练性能、loss是否达标,用例执行超时",
+    "op_name": "",
+    "env": {
+      "device": "GPU",
+      "ms_commit": "abadfa2e5f",
+      "cann_version": "cann8.5.0_20251225"
+    },
+    "root_cause": "",
+    "fix_solution": "",
+    "fix_pr": "",
+    "introduction_type": "",
+    "introduction_pr": "",
+    "status": "DONE",
+    "source_file": "gitcode-com-mindspore-org-issues-issues-41963.md"
+  },
+  {
+    "issue_id": "41965",
+    "title": "门禁用例报错test qwen3 dryrun.py::test qwen3 cell dp2mp4pp2vpp4op 1f1b,test qwen3 dryrun.py::test qwen3 dp4mp4pp1op recompute",
+    "op_name": "",
+    "env": {
+      "device": "ascend",
+      "ms_commit": "",
+      "cann_version": "20251225"
+    },
+    "root_cause": "问题：门禁用例报错test_qwen3_dryrun.py::test_qwen3_cell_dp2mp4pp2vpp4op_1f1b,test_qwen3_dryrun.py::test_qwen3_dp4mp4pp1op_recompute\n\n根因：\n\n1、 环境问题，并行执行用例的场景下会引起对编译产生的同名的.so文件的冲突",
+    "fix_solution": "不涉及",
+    "fix_pr": "",
+    "introduction_type": "环境问题",
+    "introduction_pr": "",
+    "status": "DONE",
+    "source_file": "gitcode-com-mindspore-org-issues-issues-41965.md"
+  },
+  {
+    "issue_id": "41966",
+    "title": "半自动并行，unified safetensors+pp stage共享权重+优化器并行+权重聚合， 偶现core",
+    "op_name": "wrap",
+    "env": {
+      "device": "Ascend",
+      "ms_commit": "",
+      "cann_version": "CANN_8.5.0/20251225/"
+    },
+    "root_cause": "",
+    "fix_solution": "",
+    "fix_pr": "",
+    "introduction_type": "",
+    "introduction_pr": "",
+    "status": "DONE",
+    "source_file": "gitcode-com-mindspore-org-issues-issues-41966.md"
+  },
+  {
+    "issue_id": "41967",
+    "title": "acosh算子设置01，并将设置和不设置context.set context(graph kernel flags=\"--disable expand ops=AcoshExt\")的图对比，反向传播计算时报错RuntimeError: Unknown scalar type 1",
+    "op_name": "acosh_ext",
+    "env": {
+      "device": "910B",
+      "ms_commit": "abadfa2e5fd62b",
+      "cann_version": "cann_8.5.0_20251225"
+    },
+    "root_cause": "问题：dump ir报错RuntimeError: Unknown scalar type 1\n\n根因：\n\ndump未支持FP16类型",
+    "fix_solution": "增加FP16/BF16支持",
+    "fix_pr": "https://gitee.com/mindspore/mindspore/pulls/91426",
+    "introduction_type": "特性合入引入",
+    "introduction_pr": "",
+    "status": "DONE",
+    "source_file": "gitcode-com-mindspore-org-issues-issues-41967.md"
+  },
+  {
+    "issue_id": "41968",
+    "title": "mint.nn.Linear fp16 910a偶现精度问题",
+    "op_name": "",
+    "env": {
+      "device": "910a",
+      "ms_commit": "abadfa2e5fd62bd8efe89b5641a3f66257773fa4",
+      "cann_version": "20251225"
+    },
+    "root_cause": "问题：mint.nn.Linear fp16 910a 固定seed=1767233548，其中第一组shape (39, 25)的计算结果与torch cpu相比误差超过0.001\n\n根因：非精度问题。这个用例里面mindspore算子使用的是fp16数据类型，但是torch cpu下用例先将fp16转成fp32类型（经本地验证，torch cpu使用fp32的原因大概率是因为该算子不支持fp16类型），再调用torch cpu算子，使用了更高精度。该随机数种子下，mindspore计算结果与numpy fp16的计算结果比对是在0.001内 `np.matmul(self.x_np, np.transpose(self.weight_init_np)) + self.bias_init_np`",
+    "fix_solution": "非精度问题。",
+    "fix_pr": "",
+    "introduction_type": "用例未适配",
+    "introduction_pr": "",
+    "status": "DONE",
+    "source_file": "gitcode-com-mindspore-org-issues-issues-41968.md"
+  },
+  {
+    "issue_id": "41969",
+    "title": "linux x86 64 cpu环境编译lite encrypt pre inference版本包，报错找不到头文件#include \"nlohmann/json.hpp\"",
+    "op_name": "",
+    "env": {
+      "device": "cpu",
+      "ms_commit": "",
+      "cann_version": "http://mindspore-repo.csi.rnd.huawei.com/productrepo/HiAI/Milan_C25/20251225_atlas/"
+    },
+    "root_cause": "问题：linux_x86_64_cpu环境编译lite encrypt_pre_inference版本包，报错找不到头文件#include \"nlohmann/json.hpp\"\n\n根因：特性合入导致的问题，合入PR: [https://gitee.com/mindspore/mindspore-lite/pulls/484](https://gitee.com/mindspore/mindspore-lite/pulls/484)",
+    "fix_solution": "1)修复非云侧场景编包时引入所需要的第三方库的依赖",
+    "fix_pr": "",
+    "introduction_type": "特性合入引入",
+    "introduction_pr": "",
+    "status": "DONE",
+    "source_file": "gitcode-com-mindspore-org-issues-issues-41969.md"
+  },
+  {
+    "issue_id": "41970",
+    "title": "[Bug]mindone transformers下的modeling clip训练精度概率性不达标-org-issues-AtomGit | GitCode",
+    "op_name": "",
+    "env": {
+      "device": "Ascend",
+      "ms_commit": "",
+      "cann_version": "CANN_8.5.0/20251225"
+    },
+    "root_cause": "问题：mindone transformers的CLIPModel偶现精度误差\n\n根因：\n\n1、precision为bf16时，部分seed下，CLIPModel偶现精度误差，误差波动超出阈值。",
+    "fix_solution": "1、修改误差阈值",
+    "fix_pr": "",
+    "introduction_type": "特性合入引入",
+    "introduction_pr": "",
+    "status": "DONE",
+    "source_file": "gitcode-com-mindspore-org-issues-issues-41970.md"
+  },
+  {
+    "issue_id": "41971",
+    "title": "ops.scatternd pynative模式参数校验丢失",
+    "op_name": "scatternd",
+    "env": {
+      "device": "Ascend",
+      "ms_commit": "abadfa2e5fd62bd8efe89b5641a3f66257773fa4",
+      "cann_version": "20251225"
+    },
+    "root_cause": "问题：scatternd pynative模式传入list shape预期报错未报错\n\n根因：\n\nConvertSequence函数将list输入自动转为tuple输入导致未报错。修改该行为",
+    "fix_solution": "ConvertSequence函数将list输入自动转为tuple输入导致未报错。修改该行为",
+    "fix_pr": "https://gitee.com/mindspore/mindspore/pulls/91430",
+    "introduction_type": "特性合入引入",
+    "introduction_pr": "",
+    "status": "DONE",
+    "source_file": "gitcode-com-mindspore-org-issues-issues-41971.md"
+  },
+  {
+    "issue_id": "41972",
+    "title": "mint.nn.functional.embedding/mint.nn.Embedding ascend存在精度问题",
+    "op_name": "embedding",
+    "env": {
+      "device": "ascend",
+      "ms_commit": "abadfa2e5fd62bd8efe89b5641a3f66257773fa4",
+      "cann_version": "20251225"
+    },
+    "root_cause": "问题：mint.nn.Embedding单算子精度用例失败\n\n根因：\n\nCANN升级引入的精度问题\n\n关联DTS单：[https://dts-szv.clouddragon.huawei.com/DTSPortal/ticket/DTS2025123029953](https://dts-szv.clouddragon.huawei.com/DTSPortal/ticket/DTS2025123029953)",
+    "fix_solution": "CANN修复",
+    "fix_pr": "",
+    "introduction_type": "CANN升级",
+    "introduction_pr": "",
+    "status": "DONE",
+    "source_file": "gitcode-com-mindspore-org-issues-issues-41972.md"
+  },
+  {
+    "issue_id": "41973",
+    "title": "mint.nn.PixelShuffle 报错 RuntimeError: Invalid abstract;AbstractProblem",
+    "op_name": "pixelshuffle",
+    "env": {
+      "device": "Ascend",
+      "ms_commit": "abadfa2e5fd62bd8efe89b5641a3f66257773fa4",
+      "cann_version": "20251225"
+    },
+    "root_cause": "问题：DeadNode节点遗留到后端出现报错。\n根因：\n\n前端脚本发生变化，导致构图发生变化，需要新增pass适配",
+    "fix_solution": "新增switch_simplify pass，避免DeadNode节点遗留到后端出现报错。",
+    "fix_pr": "https://gitee.com/mindspore/mindspore/pulls/91361",
+    "introduction_type": "测试漏测",
+    "introduction_pr": "",
+    "status": "DONE",
+    "source_file": "gitcode-com-mindspore-org-issues-issues-41973.md"
+  },
+  {
+    "issue_id": "41974",
+    "title": "nn.Conv2d fp16偶现精度问题",
+    "op_name": "conv2d",
+    "env": {
+      "device": "Ascend",
+      "ms_commit": "abadfa2e5fd62bd8efe89b5641a3f66257773fa4",
+      "cann_version": "20251225"
+    },
+    "root_cause": "",
+    "fix_solution": "1.没有修改",
+    "fix_pr": "",
+    "introduction_type": "测试漏测",
+    "introduction_pr": "",
+    "status": "DONE",
+    "source_file": "gitcode-com-mindspore-org-issues-issues-41974.md"
+  },
+  {
+    "issue_id": "41975",
+    "title": "ops.renorm ascend后端正向存在精度问题",
+    "op_name": "renorm",
+    "env": {
+      "device": "ascend",
+      "ms_commit": "abadfa2e5fd62bd8efe89b5641a3f66257773fa4",
+      "cann_version": "20251225"
+    },
+    "root_cause": "问题：ops.renorm ascend后端正向存在精度问题\n\n根因：\n\nrenorm算子实现有改动",
+    "fix_solution": "1、CANN同事已修正renorm实现，更新CANN包至最新版本，精度正确。",
+    "fix_pr": "",
+    "introduction_type": "CANN升级",
+    "introduction_pr": "",
+    "status": "DONE",
+    "source_file": "gitcode-com-mindspore-org-issues-issues-41975.md"
+  },
+  {
+    "issue_id": "41976",
+    "title": "lite删除minddata相关内容后，端侧使用RunStep方式时build报错Unsupported parameter type in Create : BinaryCrossEntropyGrad",
+    "op_name": "binary_cross_entropy_grad",
+    "env": {
+      "device": "cpu",
+      "ms_commit": "",
+      "cann_version": "http://mindspore-repo.csi.rnd.huawei.com/productrepo/HiAI/Milan_C25/20251225_atlas/"
+    },
+    "root_cause": "问题：MindSporeTest在执行RunStep用例的时候报错Unsupported parameter type in Create : BinaryCrossEntropyGrad\n\n根因：测试用例编译出来的test_basic_predict没有链接mindspore-lite-train这个so，导致CreateTrainSession没有被注册到CreateTrainSessionCallbackHolder中，导致该算子没有被注册",
+    "fix_solution": "1、在测试用例的CMakeLists.txt的链接阶段针对mindspore-lite-train增加--no-as-needed选项，强制链接mindspore-lite-train",
+    "fix_pr": "",
+    "introduction_type": "优化重构引入",
+    "introduction_pr": "",
+    "status": "DONE",
+    "source_file": "gitcode-com-mindspore-org-issues-issues-41976.md"
+  },
+  {
+    "issue_id": "41977",
+    "title": "[Bug]deepseek网络，eod泛化场景，并行策略dp1mp1pp16ep1bs1mb16gas1，跑测版本和以往版本，相同场景，loss绝对误差和norm相对误差超0；跑测版本相同版本，确定性可以固定住-org-issues-AtomGit | GitCode",
+    "op_name": "norm",
+    "env": {
+      "device": "Ascend",
+      "ms_commit": "",
+      "cann_version": "c23/20251104"
+    },
+    "root_cause": "问题：配套使用1215之后的CANN版本之后，loss和以前的版本有微弱差异（万分之三）\n\n根因：\n\n1、 CANN包matmul变更导致，经黄生帅评估，变更合理，所以1215之后的CANN包配套，需要重新基线loss，已经验证1215和1225的CANN，loss一致",
+    "fix_solution": "1、重新基线loss",
+    "fix_pr": "",
+    "introduction_type": "CANN升级",
+    "introduction_pr": "",
+    "status": "DONE",
+    "source_file": "gitcode-com-mindspore-org-issues-issues-41977.md"
+  },
+  {
+    "issue_id": "42115",
+    "title": "AtomGit | GitCode - 全球开发者的开源社区,开源代码托管平台}",
+    "op_name": "",
+    "env": {
+      "device": "",
+      "ms_commit": "",
+      "cann_version": ""
+    },
+    "root_cause": "",
+    "fix_solution": "",
+    "fix_pr": "",
+    "introduction_type": "",
+    "introduction_pr": "",
+    "status": "",
+    "source_file": "gitcode-com-mindspore-org-issues-issues-42115.md"
+  },
+  {
+    "issue_id": "42116",
+    "title": "tensor.mul 参数other类型校验丢失",
+    "op_name": "mul",
+    "env": {
+      "device": "Ascend",
+      "ms_commit": "011c1d95aa8e673866a284408f3198c470f05ddf",
+      "cann_version": "20260105"
+    },
+    "root_cause": "问题：tensor.mul 参数other类型校验丢失\n\n根因：debug COOTensor问题单，新增deprecated分支引入\n\n###",
+    "fix_solution": "删除支持list, tuple的分支\n\n###",
+    "fix_pr": "https://gitee.com/mindspore/mindspore/pulls/91457",
+    "introduction_type": "特性合入引入",
+    "introduction_pr": "https://gitee.com/mindspore/mindspore/pulls/89877",
+    "status": "DONE",
+    "source_file": "gitcode-com-mindspore-org-issues-issues-42116.md"
+  },
+  {
+    "issue_id": "42117",
+    "title": "【自提单】【MindFormers】【pynative】TransformerLayer与TransformerBlock接口缺少精度用例-org-issues-AtomGit | GitCode",
+    "op_name": "",
+    "env": {
+      "device": "Ascend",
+      "ms_commit": "",
+      "cann_version": ""
+    },
+    "root_cause": "问题：TransformerLayer与TransformerBlock接口缺少精度用例\n\n根因：\n\n1、 TransformerLayer与TransformerBlock接口只有功能用例，缺少精度用例",
+    "fix_solution": "1、增加TransformerLayer与TransformerBlock接口精度用例",
+    "fix_pr": "",
+    "introduction_type": "特性合入引入",
+    "introduction_pr": "",
+    "status": "DONE",
+    "source_file": "gitcode-com-mindspore-org-issues-issues-42117.md"
+  },
+  {
+    "issue_id": "42118",
+    "title": "[TP] world size=8,timeout=timedelta(seconds=2)，wait for workers=True, 时时间不足以支撑大数据量, 偶现core",
+    "op_name": "distributed",
+    "env": {
+      "device": "Ascend",
+      "ms_commit": "",
+      "cann_version": "CANN_8.5.0/20260105/"
+    },
+    "root_cause": "",
+    "fix_solution": "",
+    "fix_pr": "",
+    "introduction_type": "",
+    "introduction_pr": "",
+    "status": "DONE",
+    "source_file": "gitcode-com-mindspore-org-issues-issues-42118.md"
+  },
+  {
+    "issue_id": "42119",
+    "title": "兼容性deepseek3网络，断点续训精度对不齐",
+    "op_name": "",
+    "env": {
+      "device": "ASCEND",
+      "ms_commit": "",
+      "cann_version": "B100-cann_8.5.0_20251225"
+    },
+    "root_cause": "问题：兼容性deepseek3网络，断点续训精度对不齐\n\n根因：\n\n1、get_parameter_state_dp_zero中send_tensor处理未和pt对齐",
+    "fix_solution": "1、修复优化器权重save侧send_tensor处理",
+    "fix_pr": "",
+    "introduction_type": "测试新增测试场景",
+    "introduction_pr": "",
+    "status": "",
+    "source_file": "gitcode-com-mindspore-org-issues-issues-42119.md"
+  },
+  {
+    "issue_id": "42126",
+    "title": "[Bug]mindone diffusers下的I2VGenXLUNet模型训练精度不达标-org-issues-AtomGit | GitCode",
+    "op_name": "",
+    "env": {
+      "device": "Ascend",
+      "ms_commit": "",
+      "cann_version": "CANN_8.5.0/20260116"
+    },
+    "root_cause": "问题：I2VGenXLUNet模型精度未达标\n\n根因：mindone版本过老，模型未切换为mint算子，精度不足",
+    "fix_solution": "修改测试仓中mindone代码，将精度未达标模型切换为mint算子",
+    "fix_pr": "",
+    "introduction_type": "代码未适配",
+    "introduction_pr": "",
+    "status": "DONE",
+    "source_file": "gitcode-com-mindspore-org-issues-issues-42126.md"
+  },
+  {
+    "issue_id": "42129",
+    "title": "单机验证pipeline,使用global norm算法, dp=1,开启优化器并行+多副本, 使用@lazy inline报错：TypeError: 'module' object is not callable",
+    "op_name": "norm",
+    "env": {
+      "device": "910b",
+      "ms_commit": "",
+      "cann_version": "CANN_8.5.0/20260105/"
+    },
+    "root_cause": "问题：import mindspore.common.lazy_inline as lazy_inline，使用@lazy_inline报错：TypeError: 'module' object is not callable\n\n根因：\n```\n# 重构前common/__init__.py，同名模块被import时，从包命名空间直接获取同名方法\nfrom mindspore.common.lazy_inline import lazy_inline\n\n# 重构后common/__init__.py，上述同名场景不适用，因此不支持\nfrom mindspore.graph.lazy_inline import lazy_inline\n\n```",
+    "fix_solution": "用例适配\n\nimport mindspore.common.lazy_inline as lazy_inline\n\n——>\n\n①from mindspore import lazy_inline\n\n②from mindspore.graph.lazy_inline import lazy_inline",
+    "fix_pr": "https://gitee.com/mindspore/mindspore/pulls/91253",
+    "introduction_type": "用例未适配",
+    "introduction_pr": "https://gitee.com/mindspore/mindspore/pulls/91253",
+    "status": "DONE",
+    "source_file": "gitcode-com-mindspore-org-issues-issues-42129.md"
+  },
+  {
+    "issue_id": "42132",
+    "title": "mindone transformers模型训练报错AttributeError: module 'mindspore.ops' has no attribute 'Tensor'",
+    "op_name": "",
+    "env": {
+      "device": "Ascend",
+      "ms_commit": "",
+      "cann_version": "CANN_8.5.0/20260105"
+    },
+    "root_cause": "",
+    "fix_solution": "",
+    "fix_pr": "",
+    "introduction_type": "",
+    "introduction_pr": "",
+    "status": "DONE",
+    "source_file": "gitcode-com-mindspore-org-issues-issues-42132.md"
+  },
+  {
+    "issue_id": "42136",
+    "title": "jit特性交互，异构+输出tuple,比较两次执行图编译时间,第二次比较时校验后端编译时间偶现失败",
+    "op_name": "add",
+    "env": {
+      "device": "cpu",
+      "ms_commit": "09aa7b710c0",
+      "cann_version": "cann_8.5.0_20260105"
+    },
+    "root_cause": "",
+    "fix_solution": "",
+    "fix_pr": "",
+    "introduction_type": "",
+    "introduction_pr": "",
+    "status": "DONE",
+    "source_file": "gitcode-com-mindspore-org-issues-issues-42136.md"
+  },
+  {
+    "issue_id": "42142",
+    "title": "2.8.0安装部署资料问题，样例版本错误",
+    "op_name": "",
+    "env": {
+      "device": "ascend",
+      "ms_commit": "",
+      "cann_version": ""
+    },
+    "root_cause": "",
+    "fix_solution": "",
+    "fix_pr": "",
+    "introduction_type": "",
+    "introduction_pr": "",
+    "status": "DONE",
+    "source_file": "gitcode-com-mindspore-org-issues-issues-42142.md"
+  },
+  {
+    "issue_id": "42143",
+    "title": "2.8.0安装部署资料问题，多了CPU docker安装资料",
+    "op_name": "",
+    "env": {
+      "device": "CPU",
+      "ms_commit": "",
+      "cann_version": ""
+    },
+    "root_cause": "",
+    "fix_solution": "",
+    "fix_pr": "",
+    "introduction_type": "",
+    "introduction_pr": "",
+    "status": "DONE",
+    "source_file": "gitcode-com-mindspore-org-issues-issues-42143.md"
+  },
+  {
+    "issue_id": "42145",
+    "title": "Morph内部调用的函数包含*args, **kwargs入参时报错",
+    "op_name": "morph",
+    "env": {
+      "device": "Ascend",
+      "ms_commit": "",
+      "cann_version": ""
+    },
+    "root_cause": "",
+    "fix_solution": "",
+    "fix_pr": "",
+    "introduction_type": "",
+    "introduction_pr": "",
+    "status": "DONE",
+    "source_file": "gitcode-com-mindspore-org-issues-issues-42145.md"
+  },
+  {
+    "issue_id": "42150",
+    "title": "【自提单】【MindFormers】ReshardLoader补充UT用例",
+    "op_name": "",
+    "env": {
+      "device": "Ascend",
+      "ms_commit": "",
+      "cann_version": ""
+    },
+    "root_cause": "",
+    "fix_solution": "",
+    "fix_pr": "",
+    "introduction_type": "",
+    "introduction_pr": "",
+    "status": "DONE",
+    "source_file": "gitcode-com-mindspore-org-issues-issues-42150.md"
+  },
+  {
+    "issue_id": "42154",
+    "title": "【自提单】num floating point operations接口需要补充ut用例",
+    "op_name": "",
+    "env": {
+      "device": "",
+      "ms_commit": "",
+      "cann_version": ""
+    },
+    "root_cause": "问题：num_floating_point_operations接口需要补充ut用例\n\n根因：\n\n1、 num_floating_point_operations接口缺少用例，覆盖率较低",
+    "fix_solution": "1、增加接口用例，达到全场景覆盖",
+    "fix_pr": "",
+    "introduction_type": "特性合入引入",
+    "introduction_pr": "",
+    "status": "DONE",
+    "source_file": "gitcode-com-mindspore-org-issues-issues-42154.md"
+  },
+  {
+    "issue_id": "42155",
+    "title": "allgather InnerCommAllReduce 等通信报错，不支持complex64",
+    "op_name": "",
+    "env": {
+      "device": "910b",
+      "ms_commit": "",
+      "cann_version": "CANN_8.5.0/20260105/"
+    },
+    "root_cause": "",
+    "fix_solution": "",
+    "fix_pr": "",
+    "introduction_type": "",
+    "introduction_pr": "",
+    "status": "DONE",
+    "source_file": "gitcode-com-mindspore-org-issues-issues-42155.md"
+  },
+  {
+    "issue_id": "42160",
+    "title": "ops.exp2 fp16偶现精度问题",
+    "op_name": "exp2",
+    "env": {
+      "device": "Ascend",
+      "ms_commit": "bc0b0f28125e13cb1ec2b60e534211c8ecc72652",
+      "cann_version": "20260105"
+    },
+    "root_cause": "问题：exp2 在float16的一维反向用例中有精度问题\n\n根因：\n\n1、测试仓对比精度的函数没有适配算子精度比较的规则，对于float16的算子，标杆要先转成float32，然后计算完后转成float16比较，参看文档https://wiki.huawei.com/domains/21427/wiki/40193/WIKI202509168307538",
+    "fix_solution": "1、对齐算子比较标准，撤回提交https://codehub-y.huawei.com/MindSpore-enterprise/MindSpore-test/MindSporeTest/files/commit/1f0a09495c26cf26e970fff7a1d0e6affeca384c?ref=master",
+    "fix_pr": "",
+    "introduction_type": "用例未适配",
+    "introduction_pr": "",
+    "status": "DONE",
+    "source_file": "gitcode-com-mindspore-org-issues-issues-42160.md"
+  },
+  {
+    "issue_id": "42163",
+    "title": "floormod fp16偶现精度问题",
+    "op_name": "",
+    "env": {
+      "device": "Ascend",
+      "ms_commit": "bc0b0f28125e13cb1ec2b60e534211c8ecc72652",
+      "cann_version": "20260105"
+    },
+    "root_cause": "",
+    "fix_solution": "",
+    "fix_pr": "",
+    "introduction_type": "",
+    "introduction_pr": "",
+    "status": "",
+    "source_file": "gitcode-com-mindspore-org-issues-issues-42163.md"
+  },
+  {
+    "issue_id": "42166",
+    "title": "if while for中使用常量tensor，反向报错RuntimeError: Can't access data on Ascend",
+    "op_name": "add",
+    "env": {
+      "device": "Ascend",
+      "ms_commit": "bc0b0f28125",
+      "cann_version": "cann_9.0.0_20260210"
+    },
+    "root_cause": "问题：if_while_for中使用常量tensor，反向报错RuntimeError: Can't access data on Ascend\n\n根因：\n\n图编译下infer value流程需要正确输入cpu tensor，已完成host侧计算结果，并常量折叠。但当前版本的图编译流程并未在infer value前校验输入是否同步到host。",
+    "fix_solution": "新增可触发infer value的算子输入常量device tensor。",
+    "fix_pr": "",
+    "introduction_type": "用例未适配",
+    "introduction_pr": "",
+    "status": "DONE",
+    "source_file": "gitcode-com-mindspore-org-issues-issues-42166.md"
+  },
+  {
+    "issue_id": "42168",
+    "title": "【MindFormers】【B版本】is legacy model()逻辑变更导致用例批量报错",
+    "op_name": "",
+    "env": {
+      "device": "cpu",
+      "ms_commit": "",
+      "cann_version": "CANN"
+    },
+    "root_cause": "",
+    "fix_solution": "",
+    "fix_pr": "",
+    "introduction_type": "",
+    "introduction_pr": "",
+    "status": "DONE",
+    "source_file": "gitcode-com-mindspore-org-issues-issues-42168.md"
+  },
+  {
+    "issue_id": "42174",
+    "title": "图算融合O1没走进图算，融合失败",
+    "op_name": "allreduce",
+    "env": {
+      "device": "Ascend",
+      "ms_commit": "",
+      "cann_version": "CANN_8.5.0/20260105/"
+    },
+    "root_cause": "",
+    "fix_solution": "",
+    "fix_pr": "",
+    "introduction_type": "",
+    "introduction_pr": "",
+    "status": "DONE",
+    "source_file": "gitcode-com-mindspore-org-issues-issues-42174.md"
+  },
+  {
+    "issue_id": "42178",
+    "title": "【MindFormers】【模型】【性能】deepseekv3减层8p训练任务性能劣化超20%",
+    "op_name": "",
+    "env": {
+      "device": "910B",
+      "ms_commit": "",
+      "cann_version": "CANN"
+    },
+    "root_cause": "",
+    "fix_solution": "",
+    "fix_pr": "",
+    "introduction_type": "",
+    "introduction_pr": "",
+    "status": "DONE",
+    "source_file": "gitcode-com-mindspore-org-issues-issues-42178.md"
+  },
+  {
+    "issue_id": "42179",
+    "title": "【MindFormers】【模型】【性能】test mf seqpp llama3 1 8b perf训练任务性能劣化超20%",
+    "op_name": "",
+    "env": {
+      "device": "910B",
+      "ms_commit": "",
+      "cann_version": "CANN"
+    },
+    "root_cause": "",
+    "fix_solution": "",
+    "fix_pr": "",
+    "introduction_type": "",
+    "introduction_pr": "",
+    "status": "DONE",
+    "source_file": "gitcode-com-mindspore-org-issues-issues-42179.md"
+  },
+  {
+    "issue_id": "42180",
+    "title": "deepseek-mcore网络，dp2mp2pp4ep4bs1mb8gas1并行策略，网络训练，性能劣化，FPS is 1540 less than 1616.9",
+    "op_name": "less",
+    "env": {
+      "device": "ASCEND",
+      "ms_commit": "",
+      "cann_version": "cann_8.5.0_20260105"
+    },
+    "root_cause": "",
+    "fix_solution": "",
+    "fix_pr": "",
+    "introduction_type": "",
+    "introduction_pr": "",
+    "status": "DONE",
+    "source_file": "gitcode-com-mindspore-org-issues-issues-42180.md"
+  },
+  {
+    "issue_id": "42181",
+    "title": "deepseek-mcore网络，dp2mp2pp4ep4bs1mb8gas1并行策略，网络训练，显存超标，peak memory:356 is large than 313.95",
+    "op_name": "",
+    "env": {
+      "device": "ASCEND",
+      "ms_commit": "",
+      "cann_version": "cann_8.5.0_20260105"
+    },
+    "root_cause": "",
+    "fix_solution": "",
+    "fix_pr": "",
+    "introduction_type": "",
+    "introduction_pr": "",
+    "status": "DONE",
+    "source_file": "gitcode-com-mindspore-org-issues-issues-42181.md"
+  },
+  {
+    "issue_id": "42182",
+    "title": "deepseek-mcore网络，dp2mp2pp4ep4bs1mb8gas1并行策略，网络训练，确定性误差超0，mean absolute error:0.0003077779999999919 is large than 0",
+    "op_name": "",
+    "env": {
+      "device": "ASCEND",
+      "ms_commit": "",
+      "cann_version": "cann_8.5.0_20260105"
+    },
+    "root_cause": "",
+    "fix_solution": "",
+    "fix_pr": "",
+    "introduction_type": "",
+    "introduction_pr": "",
+    "status": "DONE",
+    "source_file": "gitcode-com-mindspore-org-issues-issues-42182.md"
+  },
+  {
+    "issue_id": "42183",
+    "title": "deepseek pretrain 网络加载权重时训练失败，报错：AssertionError: transformer engine does not support ascend coc",
+    "op_name": "",
+    "env": {
+      "device": "ascend",
+      "ms_commit": "",
+      "cann_version": "CANN_8.5.0/20260105-B120"
+    },
+    "root_cause": "问题：deepseek pretrain 网络加载权重时训练失败，报错：AssertionError: transformer engine does not support ascend coc\n\n根因：\n\nMindSpeed-LLM仓master分支transformer_impl参数的默认值逻辑删除，需要在模型脚本里添加--transformer-impl local入参\n\n##",
+    "fix_solution": "1、在mindspore模型脚本里添加--transformer-impl local入参\n\n##",
+    "fix_pr": "",
+    "introduction_type": "特性合入引入",
+    "introduction_pr": "",
+    "status": "DONE",
+    "source_file": "gitcode-com-mindspore-org-issues-issues-42183.md"
+  },
+  {
+    "issue_id": "42184",
+    "title": "deepseek sft 网络加载权重时报错：RuntimeError: Error(s) in loading state dict for GPTModel",
+    "op_name": "",
+    "env": {
+      "device": "ASCEND",
+      "ms_commit": "",
+      "cann_version": "CANN_8.5.0/20260105-B120"
+    },
+    "root_cause": "问题：deepseek sft 网络加载权重时报错：RuntimeError: Error(s) in loading state_dict for GPTModel\n\n根因：\n\nMindSpeed-LLM仓master分支transformer_impl参数的默认值逻辑删除，需要在模型脚本里添加--transformer-impl local入参\n\n##",
+    "fix_solution": "1、在mindspore模型脚本里添加--transformer-impl local入参\n\n##",
+    "fix_pr": "",
+    "introduction_type": "特性合入引入",
+    "introduction_pr": "",
+    "status": "DONE",
+    "source_file": "gitcode-com-mindspore-org-issues-issues-42184.md"
+  },
+  {
+    "issue_id": "42185",
+    "title": "门禁用例失败：test ascend control sink.py::test mixed while if 等用例，报错：TypeError: 'module' object is not callable.",
+    "op_name": "",
+    "env": {
+      "device": "ascend",
+      "ms_commit": "",
+      "cann_version": ""
+    },
+    "root_cause": "",
+    "fix_solution": "",
+    "fix_pr": "",
+    "introduction_type": "",
+    "introduction_pr": "",
+    "status": "DONE",
+    "source_file": "gitcode-com-mindspore-org-issues-issues-42185.md"
+  },
+  {
+    "issue_id": "42191",
+    "title": "doctest仓用例报错：free(): invalid pointer",
+    "op_name": "free",
+    "env": {
+      "device": "Ascend",
+      "ms_commit": "de530cbf1b9cbf75abb58daa2a91163ad6c15669",
+      "cann_version": "InnerVersionLink:"
+    },
+    "root_cause": "**\n\n问题：文档用例执行出现core dump。\n\n根因：属于已知问题，相关信息见issue：[https://e.gitee.com/mind_spore/issues/table?issue=IDA4K9](https://e.gitee.com/mind_spore/issues/table?issue=IDA4K9)\n**",
+    "fix_solution": "**\n\n修改文档的导包顺序。\n**",
+    "fix_pr": "",
+    "introduction_type": "",
+    "introduction_pr": "",
+    "status": "DONE",
+    "source_file": "gitcode-com-mindspore-org-issues-issues-42191.md"
+  },
+  {
+    "issue_id": "42199",
+    "title": "mindyolo yolov8n网络ckpt转onnx报错ExportPrimitive] Can not find key Divs in convert map. Exporting Divs operator is not yet supported.",
+    "op_name": "divs",
+    "env": {
+      "device": "Ascend",
+      "ms_commit": "",
+      "cann_version": ""
+    },
+    "root_cause": "",
+    "fix_solution": "",
+    "fix_pr": "",
+    "introduction_type": "",
+    "introduction_pr": "",
+    "status": "DONE",
+    "source_file": "gitcode-com-mindspore-org-issues-issues-42199.md"
+  },
+  {
+    "issue_id": "42210",
+    "title": "mindyolo yolov5 算力切分场景训练失败",
+    "op_name": "",
+    "env": {
+      "device": "Ascend",
+      "ms_commit": "",
+      "cann_version": "CANN_8.5.0/20260105"
+    },
+    "root_cause": "",
+    "fix_solution": "",
+    "fix_pr": "",
+    "introduction_type": "",
+    "introduction_pr": "",
+    "status": "DONE",
+    "source_file": "gitcode-com-mindspore-org-issues-issues-42210.md"
+  },
+  {
+    "issue_id": "42212",
+    "title": "msrun启动--bind numa参数传入不存在路径报错msrun: error: argument --bind numa",
+    "op_name": "",
+    "env": {
+      "device": "ascend",
+      "ms_commit": "0fd13d92",
+      "cann_version": "CANN_8.5.0/20260105"
+    },
+    "root_cause": "问题：\n1. 构造的异常场景，在传入的json文件路径不存在时，报错不够清晰。\n2. 使用--bind_numa传入json文件的场景下，会直接校验taskset和numactl命令的可用性，必须两者都可用才校验通过。但实际场景可能仅numactl或者taskset两者只用其一。\n\n#",
+    "fix_solution": "1. 在--bind_numa传入以.json结尾的字符串时，若json文件找不到，则明确报错“bind_numa json path xxx is not a file”。\n2. 传入的json文件中，没有使用的进程绑核则不该校验taskset命令可用性，没有使用进程绑内存不该校验numactl命令可用性。\n\n#",
+    "fix_pr": "",
+    "introduction_type": "特性合入引入",
+    "introduction_pr": "",
+    "status": "DONE",
+    "source_file": "gitcode-com-mindspore-org-issues-issues-42212.md"
+  },
+  {
+    "issue_id": "42220",
+    "title": "DVM无图融合CV融合的控制流场景精度报错",
+    "op_name": "add",
+    "env": {
+      "device": "Ascend",
+      "ms_commit": "",
+      "cann_version": ""
+    },
+    "root_cause": "",
+    "fix_solution": "",
+    "fix_pr": "",
+    "introduction_type": "",
+    "introduction_pr": "",
+    "status": "DONE",
+    "source_file": "gitcode-com-mindspore-org-issues-issues-42220.md"
+  },
+  {
+    "issue_id": "42227",
+    "title": "fusedadamw算子报错：TypeError: unsupported operand type(s) for +=: 'NoneType' and 'ParameterTuple'",
+    "op_name": "",
+    "env": {
+      "device": "910b",
+      "ms_commit": "",
+      "cann_version": "CANN_9.0.0/20260210"
+    },
+    "root_cause": "**\n\n问题：fusedadamw算子报错：TypeError: unsupported operand type(s) for +=: 'NoneType' and 'ParameterTuple'\n\n根因：使用 `FusedAdamW`  优化器时，创建优化器设置 `amsgrad` 为false，后又传了一组设置 `amsgrad` 为true的参数。 `FusedAdamW`  在创建且 `amsgrad` 为false时，优化器内部参数 `max_exp_avg_sq`  没有初始化，后续传入 `amsgrad` 为true时，该参数会累加，所以累加失败 。\n**",
+    "fix_solution": "**\n\n增加 `FusedAdamW`  优化器对 `amsgrad` 混合使用的拦截校验，禁止该参数的混合使用场景。\n**",
+    "fix_pr": "",
+    "introduction_type": "",
+    "introduction_pr": "",
+    "status": "DONE",
+    "source_file": "gitcode-com-mindspore-org-issues-issues-42227.md"
+  },
+  {
+    "issue_id": "42247",
+    "title": "pylint filter",
+    "op_name": "",
+    "env": {
+      "device": "Ascend",
+      "ms_commit": "",
+      "cann_version": ""
+    },
+    "root_cause": "",
+    "fix_solution": "",
+    "fix_pr": "",
+    "introduction_type": "",
+    "introduction_pr": "",
+    "status": "",
+    "source_file": "gitcode-com-mindspore-org-issues-issues-42247.md"
+  },
+  {
+    "issue_id": "42249",
+    "title": "tensor.masked fill kernel性能多调用算子了(copy from 42113)",
+    "op_name": "copy",
+    "env": {
+      "device": "Ascend",
+      "ms_commit": "8511992e17c15cadf123a7e778032a74b1e87317",
+      "cann_version": ""
+    },
+    "root_cause": "",
+    "fix_solution": "",
+    "fix_pr": "",
+    "introduction_type": "",
+    "introduction_pr": "",
+    "status": "",
+    "source_file": "gitcode-com-mindspore-org-issues-issues-42249.md"
+  },
+  {
+    "issue_id": "42283",
+    "title": "2.2版本mindspore导出的mindir在2.3版本上修改，并加载报Fatal Python error: Segmentation fault",
+    "op_name": "",
+    "env": {
+      "device": "Ascend",
+      "ms_commit": "ae4a25ff6d6e",
+      "cann_version": ""
+    },
+    "root_cause": "",
+    "fix_solution": "",
+    "fix_pr": "",
+    "introduction_type": "",
+    "introduction_pr": "",
+    "status": "",
+    "source_file": "gitcode-com-mindspore-org-issues-issues-42283.md"
+  },
+  {
+    "issue_id": "42285",
+    "title": "resnet50单卡训练中插入format训练报错TypeError: 'bool' object is not iterable",
+    "op_name": "",
+    "env": {
+      "device": "Ascend",
+      "ms_commit": "ae4a25ff",
+      "cann_version": ""
+    },
+    "root_cause": "",
+    "fix_solution": "",
+    "fix_pr": "",
+    "introduction_type": "",
+    "introduction_pr": "",
+    "status": "",
+    "source_file": "gitcode-com-mindspore-org-issues-issues-42285.md"
+  },
+  {
+    "issue_id": "42297",
+    "title": "[mint.prod]反向计算有问题",
+    "op_name": "prod",
+    "env": {
+      "device": "ascend",
+      "ms_commit": "",
+      "cann_version": "CANN"
+    },
+    "root_cause": "",
+    "fix_solution": "",
+    "fix_pr": "",
+    "introduction_type": "",
+    "introduction_pr": "",
+    "status": "",
+    "source_file": "gitcode-com-mindspore-org-issues-issues-42297.md"
+  },
+  {
+    "issue_id": "42311",
+    "title": "[自提单]model runner ut修复",
+    "op_name": "",
+    "env": {
+      "device": "CPU",
+      "ms_commit": "",
+      "cann_version": ""
+    },
+    "root_cause": "",
+    "fix_solution": "",
+    "fix_pr": "",
+    "introduction_type": "",
+    "introduction_pr": "",
+    "status": "DONE",
+    "source_file": "gitcode-com-mindspore-org-issues-issues-42311.md"
+  },
+  {
+    "issue_id": "42332",
+    "title": "【MindFormers】【冒烟】MindFormers MFPipelineWithLossScaleCell接口报错AttributeError: MFPipelineWithLossScaleCell: 'NoneType' object has no attribute 'experimental attention variant'",
+    "op_name": "",
+    "env": {
+      "device": "910B",
+      "ms_commit": "",
+      "cann_version": "CANN"
+    },
+    "root_cause": "",
+    "fix_solution": "",
+    "fix_pr": "",
+    "introduction_type": "",
+    "introduction_pr": "",
+    "status": "",
+    "source_file": "gitcode-com-mindspore-org-issues-issues-42332.md"
+  }
+]

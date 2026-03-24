@@ -1,0 +1,35 @@
+{
+  "name": "web-fetch",
+  "version": "1.2.0",
+  "displayName": "Web Fetch",
+  "description": "Fetch and save webpages using Playwright with Chrome persistent context. Supports authentication, multiple formats (MHTML, PDF, PNG, HTML), and batch processing.",
+  "author": "OpenClaw Assistant",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-org/web-fetch"
+  },
+  "keywords": [
+    "web-scraping",
+    "playwright",
+    "webpage-capture",
+    "authentication",
+    "batch-processing"
+  ],
+  "skills": [
+    {
+      "name": "web-fetch",
+      "path": "SKILL.md"
+    }
+  ],
+  "requirements": {
+    "python": ">=3.7",
+    "packages": [
+      "playwright>=1.40.0"
+    ]
+  },
+  "scripts": {
+    "install": "pip install -r requirements.txt && playwright install chromium",
+    "test": "python3 -m pytest tests/ || true"
+  }
+}
