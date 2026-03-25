@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 from python_selection import resolve_selected_python
+from runtime_env import detect_ascend_runtime, resolve_runtime_environment
 
 
 RUNTIME_IMPORT_CANDIDATES = {
@@ -94,19 +95,11 @@ def detect_output_path(target: dict, root: Path, entry_script: Optional[Path]) -
     return None
 
 
-def build_system_layer() -> dict:
-    ascend_env = Path("/usr/local/Ascend/ascend-toolkit/set_env.sh")
-    return {
-        "requires_ascend": True,
-        "device_paths_present": any(Path("/dev").glob("davinci*")),
-        "ascend_env_script_present": ascend_env.exists(),
-    }
-
-
 def run_json_probe_with_python(
     python_path: Path,
     mode: str,
     payload: dict,
+    probe_env: Optional[Dict[str, str]] = None,
 ) -> Tuple[dict, Optional[str]]:
     try:
         completed = subprocess.run(
@@ -115,6 +108,7 @@ def run_json_probe_with_python(
             text=True,
             capture_output=True,
             timeout=10,
+            env=probe_env,
         )
     except (OSError, subprocess.SubprocessError) as exc:
         return {}, str(exc)
@@ -129,7 +123,11 @@ def run_json_probe_with_python(
     return result, None
 
 
-def run_import_probe_with_python(python_path: Path, packages: List[str]) -> Tuple[Dict[str, bool], Optional[str]]:
+def run_import_probe_with_python(
+    python_path: Path,
+    packages: List[str],
+    probe_env: Optional[Dict[str, str]] = None,
+) -> Tuple[Dict[str, bool], Optional[str]]:
     if not packages:
         return {}, None
 
@@ -137,6 +135,7 @@ def run_import_probe_with_python(python_path: Path, packages: List[str]) -> Tupl
         python_path,
         "import",
         {"packages": packages},
+        probe_env,
     )
     if error:
         return {package: False for package in packages}, error
@@ -147,11 +146,13 @@ def run_import_probe_with_python(python_path: Path, packages: List[str]) -> Tupl
 def run_framework_smoke_with_python(
     python_path: Path,
     framework_path: str,
+    probe_env: Optional[Dict[str, str]] = None,
 ) -> Tuple[dict, Optional[str]]:
     result, error = run_json_probe_with_python(
         python_path,
         "framework_smoke",
         {"framework_path": framework_path},
+        probe_env,
     )
     if error:
         return {
@@ -167,18 +168,27 @@ def run_framework_smoke_with_python(
     }, None
 
 
-def probe_imports(packages: List[str], python_layer: dict) -> Tuple[Dict[str, bool], Optional[str]]:
+def probe_imports(
+    packages: List[str],
+    python_layer: dict,
+    probe_env: Optional[Dict[str, str]] = None,
+) -> Tuple[Dict[str, bool], Optional[str]]:
     if not packages:
         return {}, None
 
     probe_python_path = python_layer.get("probe_python_path")
     if probe_python_path:
-        return run_import_probe_with_python(Path(probe_python_path), packages)
+        return run_import_probe_with_python(Path(probe_python_path), packages, probe_env)
 
     return {package: False for package in packages}, "probe python path is unavailable"
 
 
-def probe_framework_smoke(framework_path: str, python_layer: dict, import_probes: dict[str, bool]) -> dict:
+def probe_framework_smoke(
+    framework_path: str,
+    python_layer: dict,
+    import_probes: dict[str, bool],
+    probe_env: Optional[Dict[str, str]] = None,
+) -> dict:
     if framework_path not in {"mindspore", "pta", "mixed"}:
         return {
             "status": "unsupported",
@@ -201,11 +211,11 @@ def probe_framework_smoke(framework_path: str, python_layer: dict, import_probes
             "error": "probe python path is unavailable",
         }
 
-    result, _ = run_framework_smoke_with_python(Path(probe_python_path), framework_path)
+    result, _ = run_framework_smoke_with_python(Path(probe_python_path), framework_path, probe_env)
     return result
 
 
-def build_python_layer(target: dict, root: Path) -> dict:
+def build_python_layer(target: dict, root: Path, system_layer: dict) -> dict:
     uv_path = shutil.which("uv")
     selection = resolve_selected_python(
         root=root,
@@ -229,10 +239,16 @@ def build_python_layer(target: dict, root: Path) -> dict:
         "probe_python_path": probe_python_path,
         "probe_source": selection.get("selection_source"),
         "python_path": probe_python_path,
+        "runtime_env_source": system_layer.get("probe_env_source"),
+        "runtime_env_error": system_layer.get("probe_env_error"),
     }
 
 
-def build_framework_layer(target: dict, python_layer: dict) -> dict:
+def build_framework_layer(
+    target: dict,
+    python_layer: dict,
+    probe_env: Optional[Dict[str, str]] = None,
+) -> dict:
     framework_path = target.get("framework_path") or "unknown"
     required_packages: List[str] = []
     if framework_path == "mindspore":
@@ -241,8 +257,8 @@ def build_framework_layer(target: dict, python_layer: dict) -> dict:
         required_packages = ["torch", "torch_npu"]
     elif framework_path == "mixed":
         required_packages = ["mindspore", "torch", "torch_npu"]
-    import_probes, probe_error = probe_imports(required_packages, python_layer)
-    smoke_prerequisite = probe_framework_smoke(framework_path, python_layer, import_probes)
+    import_probes, probe_error = probe_imports(required_packages, python_layer, probe_env)
+    smoke_prerequisite = probe_framework_smoke(framework_path, python_layer, import_probes, probe_env)
     return {
         "framework_path": framework_path,
         "required_packages": required_packages,
@@ -255,9 +271,13 @@ def build_framework_layer(target: dict, python_layer: dict) -> dict:
     }
 
 
-def build_runtime_layer(entry_script: Optional[Path], python_layer: dict) -> dict:
+def build_runtime_layer(
+    entry_script: Optional[Path],
+    python_layer: dict,
+    probe_env: Optional[Dict[str, str]] = None,
+) -> dict:
     required_imports = extract_runtime_imports(entry_script)
-    import_probes, probe_error = probe_imports(required_imports, python_layer)
+    import_probes, probe_error = probe_imports(required_imports, python_layer, probe_env)
     return {
         "required_imports": required_imports,
         "import_probes": import_probes,
@@ -330,12 +350,16 @@ def build_dependency_closure(target: dict, root: Path) -> dict:
             entry_script = root / entry_script
 
     target_type = target.get("target_type") or "unknown"
-    python_layer = build_python_layer(target, root)
+    system_layer = detect_ascend_runtime()
+    probe_env, probe_env_source, probe_env_error = resolve_runtime_environment(system_layer)
+    system_layer["probe_env_source"] = probe_env_source
+    system_layer["probe_env_error"] = probe_env_error
+    python_layer = build_python_layer(target, root, system_layer)
     layers = {
-        "system": build_system_layer(),
+        "system": system_layer,
         "python_environment": python_layer,
-        "framework": build_framework_layer(target, python_layer),
-        "runtime_dependencies": build_runtime_layer(entry_script, python_layer),
+        "framework": build_framework_layer(target, python_layer, probe_env),
+        "runtime_dependencies": build_runtime_layer(entry_script, python_layer, probe_env),
         "workspace_assets": build_workspace_layer(target, root, target_type, entry_script),
         "task_execution": build_task_layer(target),
     }

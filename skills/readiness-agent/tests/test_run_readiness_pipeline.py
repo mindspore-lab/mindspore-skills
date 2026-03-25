@@ -189,8 +189,7 @@ def test_run_readiness_pipeline_auto_creates_default_env_and_reruns(tmp_path: Pa
         str(output_dir),
         "--target",
         "inference",
-        "--mode",
-        "auto",
+        "--auto",
         "--model-path",
         "model",
     )

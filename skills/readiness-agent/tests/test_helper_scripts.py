@@ -1,7 +1,10 @@
 import json
+import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
+from typing import Optional
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -9,13 +12,14 @@ SCRIPTS = ROOT / "scripts"
 READINESS_VERDICT_REF = Path("meta/readiness-verdict.json")
 
 
-def run_script(script_name: str, *args: str) -> subprocess.CompletedProcess[str]:
+def run_script(script_name: str, *args: str, env: Optional[dict] = None) -> subprocess.CompletedProcess[str]:
     script = SCRIPTS / script_name
     return subprocess.run(
         [sys.executable, str(script), *args],
         check=True,
         text=True,
         capture_output=True,
+        env=env,
     )
 
 
@@ -108,6 +112,30 @@ def test_discover_execution_target_records_selected_python(tmp_path: Path):
     target = json.loads(output.read_text(encoding="utf-8"))
     assert target["selected_python"] == sys.executable
     assert target["selected_python_status"] == "selected"
+
+
+def test_discover_execution_target_infers_model_path_from_markers(tmp_path: Path):
+    (tmp_path / "infer.py").write_text(
+        "import torch\nimport torch_npu\nmodel_path = './models/Qwen3.5-0.8B'\n",
+        encoding="utf-8",
+    )
+    model_dir = tmp_path / "models" / "Qwen3.5-0.8B"
+    model_dir.mkdir(parents=True)
+    (model_dir / "config.json").write_text("{}", encoding="utf-8")
+    (model_dir / "tokenizer.json").write_text("{}", encoding="utf-8")
+    (model_dir / "model.safetensors").write_text("", encoding="utf-8")
+    output = tmp_path / "target.json"
+
+    run_script(
+        "discover_execution_target.py",
+        "--working-dir",
+        str(tmp_path),
+        "--output-json",
+        str(output),
+    )
+    target = json.loads(output.read_text(encoding="utf-8"))
+    assert target["model_path"] == "models/Qwen3.5-0.8B"
+    assert "model path inferred from workspace model markers" in target["evidence"]
 
 
 def test_normalize_blockers_maps_categories(tmp_path: Path):
@@ -258,6 +286,94 @@ else:
     assert framework["smoke_prerequisite"]["status"] == "passed"
     assert "pta smoke ok" in framework["smoke_prerequisite"]["details"]
     assert runtime["import_probes"]["transformers"] is False
+
+
+def test_build_dependency_closure_sources_detected_ascend_env_for_pta_probe(tmp_path: Path):
+    if os.name == "nt" or shutil.which("bash") is None:
+        return
+
+    (tmp_path / "infer.py").write_text(
+        "import torch\nimport torch_npu\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "model").mkdir()
+
+    fake_python = tmp_path / ".venv" / "bin" / "python"
+    fake_python.parent.mkdir(parents=True)
+    fake_python.write_text(
+        """#!/usr/bin/env python3
+import json
+import os
+import subprocess
+import sys
+
+if len(sys.argv) >= 3 and sys.argv[1] == "-c":
+    code = sys.argv[2]
+    if "platform.python_version" in code and "version_info" in code:
+        print(json.dumps({"version_info": [3, 10, 0], "version": "3.10.0"}))
+        raise SystemExit(0)
+    mode = sys.argv[3]
+    payload = json.loads(sys.argv[4])
+    runtime_ready = os.environ.get("FAKE_ASCEND_READY") == "1"
+    if mode == "import":
+        packages = payload.get("packages", [])
+        available = {"torch", "torch_npu"} if runtime_ready else {"torch"}
+        print(json.dumps({name: name in available for name in packages}))
+        raise SystemExit(0)
+    if mode == "framework_smoke":
+        print(json.dumps({"success": runtime_ready, "details": ["runtime ready"] if runtime_ready else [], "error": None if runtime_ready else "missing runtime"}))
+        raise SystemExit(0)
+
+completed = subprocess.run([sys.executable, *sys.argv[1:]])
+raise SystemExit(completed.returncode)
+""",
+        encoding="utf-8",
+    )
+    fake_python.chmod(fake_python.stat().st_mode | 0o111)
+
+    ascend_home = tmp_path / "ascend"
+    ascend_home.mkdir()
+    (ascend_home / "set_env.sh").write_text(
+        "export FAKE_ASCEND_READY=1\n",
+        encoding="utf-8",
+    )
+
+    target_path = tmp_path / "target.json"
+    closure_path = tmp_path / "closure.json"
+    target_path.write_text(
+        json.dumps(
+            {
+                "working_dir": str(tmp_path),
+                "target_type": "inference",
+                "entry_script": "infer.py",
+                "framework_path": "pta",
+                "model_path": "model",
+                "launch_cmd": "python infer.py",
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    env = dict(os.environ)
+    env["ASCEND_HOME_PATH"] = str(ascend_home)
+
+    run_script(
+        "build_dependency_closure.py",
+        "--target-json",
+        str(target_path),
+        "--output-json",
+        str(closure_path),
+        env=env,
+    )
+    closure = json.loads(closure_path.read_text(encoding="utf-8"))
+    system = closure["layers"]["system"]
+    framework = closure["layers"]["framework"]
+
+    assert system["ascend_env_script_present"] is True
+    assert system["ascend_env_script_path"] == str(ascend_home / "set_env.sh")
+    assert system["probe_env_source"] == "sourced_script"
+    assert framework["import_probes"]["torch_npu"] is True
+    assert framework["smoke_prerequisite"]["status"] == "passed"
 
 
 def test_collect_readiness_checks_flags_missing_uv_and_missing_entry(tmp_path: Path):
@@ -1374,3 +1490,83 @@ def test_build_readiness_report_warn_with_can_run_true_for_strong_evidence_plus_
     assert verdict["can_run"] is True
     assert "warnings" in verdict["summary"].lower()
     assert verdict["next_action"] == "Inspect warnings before proceeding with the intended task."
+
+
+def test_execute_env_fix_prefers_cpu_torch_for_pta_framework(tmp_path: Path):
+    plan_path = tmp_path / "plan.json"
+    result_path = tmp_path / "result.json"
+    log_path = tmp_path / "uv-log.jsonl"
+    env_root = tmp_path / ".venv"
+    python_path = env_root / "bin" / "python"
+    python_path.parent.mkdir(parents=True)
+    python_path.write_text("#!/usr/bin/env python3\n", encoding="utf-8")
+    python_path.chmod(python_path.stat().st_mode | 0o111)
+
+    plan_path.write_text(
+        json.dumps(
+            {
+                "actions": [
+                    {
+                        "id": "action-1",
+                        "action_type": "repair_pta_framework",
+                        "allowed": True,
+                        "requires_confirmation": True,
+                        "reason": "PTA framework path requires repair inside the selected environment.",
+                        "revalidation_scope": ["framework"],
+                        "package_names": ["torch", "torch_npu"],
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    uv_dir = tmp_path / "fake-uv"
+    uv_dir.mkdir()
+    uv_py = uv_dir / "uv"
+    uv_py.write_text(
+        f"""#!/usr/bin/env python3
+import json
+import sys
+from pathlib import Path
+
+log_path = Path(r"{log_path}")
+log_path.parent.mkdir(parents=True, exist_ok=True)
+log_path.open("a", encoding="utf-8").write(json.dumps(sys.argv[1:]) + "\\n")
+raise SystemExit(0)
+""",
+        encoding="utf-8",
+    )
+    uv_py.chmod(uv_py.stat().st_mode | 0o111)
+    uv_cmd = uv_dir / "uv.cmd"
+    uv_cmd.write_text(f'@echo off\r\n"{sys.executable}" "%~dp0uv" %*\r\n', encoding="utf-8")
+
+    env = dict(os.environ)
+    env["PATH"] = str(uv_dir) + os.pathsep + env.get("PATH", "")
+
+    run_script(
+        "execute_env_fix.py",
+        "--plan-json",
+        str(plan_path),
+        "--output-json",
+        str(result_path),
+        "--execute",
+        "--working-dir",
+        str(tmp_path),
+        "--selected-env-root",
+        str(env_root),
+        "--confirm-framework-repair",
+        env=env,
+    )
+
+    calls = [
+        json.loads(line)
+        for line in log_path.read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ]
+    assert len(calls) == 2
+    assert "--index-url" in calls[0]
+    assert "https://download.pytorch.org/whl/cpu" in calls[0]
+    assert "torch" in calls[0]
+    assert "torch_npu" not in calls[0]
+    assert "torch_npu" in calls[1]

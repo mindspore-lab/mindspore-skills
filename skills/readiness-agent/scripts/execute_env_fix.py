@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import argparse
 import json
+import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -11,6 +12,8 @@ from python_selection import derive_env_root_from_python, python_in_env
 
 UV_INSTALL_CMD = "curl -LsSf https://astral.sh/uv/install.sh | sh"
 UV_BIN_DIR = "$HOME/.local/bin"
+TORCH_CPU_INDEX_URL = "https://download.pytorch.org/whl/cpu"
+PTA_CPU_TORCH_PACKAGES = {"torch", "torchvision", "torchaudio"}
 
 
 def load_actions(path: Path) -> List[dict]:
@@ -64,22 +67,14 @@ def resolve_env_root(args: argparse.Namespace) -> Optional[Path]:
     return None
 
 
-def install_runtime_dependency(env_root: Path, package_name: str) -> Tuple[bool, str]:
-    uv_path = shutil.which("uv")
-    if not uv_path:
-        return False, "uv is not directly resolvable"
-    python_path = selected_python_path(env_root)
-    if not python_path.exists():
-        return False, "selected environment python is missing"
-    cmd = [uv_path, "pip", "install", "--python", str(python_path), package_name]
-    try:
-        subprocess.run(cmd, check=True, text=True, capture_output=True)
-    except subprocess.CalledProcessError as exc:
-        return False, exc.stderr.strip() or exc.stdout.strip() or "uv pip install failed"
-    return True, f"installed {package_name}"
+def package_base_name(package_name: str) -> str:
+    token = package_name.strip()
+    token = token.split("[", 1)[0]
+    parts = re.split(r"(==|>=|<=|~=|!=|>|<)", token, maxsplit=1)
+    return parts[0].strip().replace("_", "-").lower()
 
 
-def install_packages(env_root: Path, package_names: List[str]) -> Tuple[bool, str]:
+def install_packages(env_root: Path, package_names: List[str], index_url: Optional[str] = None) -> Tuple[bool, str]:
     uv_path = shutil.which("uv")
     if not uv_path:
         return False, "uv is not directly resolvable"
@@ -88,12 +83,50 @@ def install_packages(env_root: Path, package_names: List[str]) -> Tuple[bool, st
         return False, "selected environment python is missing"
     if not package_names:
         return False, "no package names were provided"
-    cmd = [uv_path, "pip", "install", "--python", str(python_path), *package_names]
+    cmd = [uv_path, "pip", "install", "--python", str(python_path)]
+    if index_url:
+        cmd.extend(["--index-url", index_url])
+    cmd.extend(package_names)
     try:
         subprocess.run(cmd, check=True, text=True, capture_output=True)
     except subprocess.CalledProcessError as exc:
         return False, exc.stderr.strip() or exc.stdout.strip() or "uv pip install failed"
     return True, f"installed {' '.join(package_names)}"
+
+
+def install_runtime_dependency(env_root: Path, package_name: str) -> Tuple[bool, str]:
+    return install_packages(env_root, [package_name])
+
+
+def install_pta_framework_packages(env_root: Path, package_names: List[str]) -> Tuple[bool, str]:
+    cpu_torch_packages = [
+        package_name
+        for package_name in package_names
+        if package_base_name(package_name) in PTA_CPU_TORCH_PACKAGES
+    ]
+    remaining_packages = [
+        package_name
+        for package_name in package_names
+        if package_name not in cpu_torch_packages
+    ]
+
+    messages: List[str] = []
+    if cpu_torch_packages:
+        ok, message = install_packages(env_root, cpu_torch_packages, index_url=TORCH_CPU_INDEX_URL)
+        if not ok:
+            return False, message
+        messages.append(f"{message} from cpu index")
+
+    if remaining_packages:
+        ok, message = install_packages(env_root, remaining_packages)
+        if not ok:
+            return False, message
+        messages.append(message)
+
+    if not messages:
+        return False, "no PTA framework package names were provided"
+
+    return True, "; ".join(messages)
 
 
 def execute_action(action: dict, args: argparse.Namespace) -> dict:
@@ -197,7 +230,13 @@ def execute_action(action: dict, args: argparse.Namespace) -> dict:
         package_names = action.get("package_names") or []
         if not package_names and action.get("package_name"):
             package_names = [action["package_name"]]
-        result["command_preview"] = "uv pip install --python <selected_env_root>/bin/python <framework package_names...>"
+        if action_type == "repair_pta_framework":
+            result["command_preview"] = (
+                "uv pip install --python <selected_env_root>/bin/python --index-url "
+                f"{TORCH_CPU_INDEX_URL} <torch...>; uv pip install --python <selected_env_root>/bin/python <torch_npu...>"
+            )
+        else:
+            result["command_preview"] = "uv pip install --python <selected_env_root>/bin/python <framework package_names...>"
         if not args.execute:
             return result
         if not args.confirm_framework_repair:
@@ -212,7 +251,10 @@ def execute_action(action: dict, args: argparse.Namespace) -> dict:
             result["status"] = "failed"
             result["reason"] = "package_names are required for framework repair"
             return result
-        ok, message = install_packages(env_root, package_names)
+        if action_type == "repair_pta_framework":
+            ok, message = install_pta_framework_packages(env_root, package_names)
+        else:
+            ok, message = install_packages(env_root, package_names)
         result["status"] = "executed" if ok else "failed"
         result["reason"] = message
         return result

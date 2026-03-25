@@ -355,12 +355,40 @@ def build_report(
     )
 
 
+def normalize_mode_args(parser: argparse.ArgumentParser, args: argparse.Namespace) -> str:
+    alias_modes = [
+        mode
+        for mode, enabled in (
+            ("check", getattr(args, "check", False)),
+            ("fix", getattr(args, "fix", False)),
+            ("auto", getattr(args, "auto", False)),
+        )
+        if enabled
+    ]
+    if len(alias_modes) > 1:
+        parser.error("use at most one of --check, --fix, or --auto")
+
+    alias_mode = alias_modes[0] if alias_modes else None
+    explicit_mode = args.mode
+    if alias_mode and explicit_mode and explicit_mode != alias_mode:
+        parser.error("--mode conflicts with the requested alias flag")
+
+    if alias_mode:
+        return alias_mode
+    if explicit_mode:
+        return explicit_mode
+    return "check"
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Run the full readiness-agent helper pipeline with optional env re-entry")
     parser.add_argument("--working-dir", required=True, help="workspace root")
     parser.add_argument("--output-dir", help="output directory for readiness artifacts (defaults to <working_dir>/out)")
     parser.add_argument("--target", default="auto", help="training, inference, or auto")
-    parser.add_argument("--mode", default="check", help="check, fix, or auto")
+    parser.add_argument("--mode", choices=("check", "fix", "auto"), help="check, fix, or auto")
+    parser.add_argument("--check", action="store_true", help="alias for --mode check")
+    parser.add_argument("--fix", action="store_true", help="alias for --mode fix")
+    parser.add_argument("--auto", action="store_true", help="alias for --mode auto")
     parser.add_argument("--entry-script", help="explicit entry script path")
     parser.add_argument("--selected-python", help="explicit Python interpreter for the workspace")
     parser.add_argument("--selected-env-root", help="explicit environment root for the workspace")
@@ -375,6 +403,7 @@ def main() -> int:
     parser.add_argument("--path-profile", help="shell profile path for PATH repair")
     parser.add_argument("--timeout-seconds", type=int, default=10, help="timeout for explicit task smoke execution")
     args = parser.parse_args()
+    args.mode = normalize_mode_args(parser, args)
 
     working_dir = Path(args.working_dir).resolve()
     output_dir = Path(args.output_dir).resolve() if args.output_dir else (working_dir / "out").resolve()

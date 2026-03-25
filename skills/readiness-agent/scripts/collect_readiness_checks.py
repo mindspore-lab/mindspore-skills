@@ -84,6 +84,9 @@ def collect_checks(target: dict, closure: dict) -> List[dict]:
         )
 
     if system.get("requires_ascend"):
+        ascend_env_script_path = system.get("ascend_env_script_path") or "/usr/local/Ascend/ascend-toolkit/set_env.sh"
+        probe_env_source = system.get("probe_env_source")
+        probe_env_error = system.get("probe_env_error")
         if not system.get("device_paths_present"):
             checks.append(
                 make_check(
@@ -119,16 +122,21 @@ def collect_checks(target: dict, closure: dict) -> List[dict]:
                     remediable=False,
                     remediation_owner="manual-system",
                     revalidation_scope=["system"],
-                    evidence=["/usr/local/Ascend/ascend-toolkit/set_env.sh missing"],
+                    evidence=[f"{ascend_env_script_path} missing"],
                 )
             )
         else:
+            evidence = [f"set_env.sh={ascend_env_script_path}"]
+            if probe_env_source:
+                evidence.append(f"probe_env_source={probe_env_source}")
+            if probe_env_error:
+                evidence.append(f"probe_env_error={probe_env_error}")
             checks.append(
                 make_check(
                     "system-ascend-env",
                     "ok",
                     "Ascend environment sourcing script is present.",
-                    evidence=["set_env.sh exists"],
+                    evidence=evidence,
                 )
             )
 

@@ -4,7 +4,9 @@ import json
 import shlex
 import subprocess
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
+
+from runtime_env import resolve_runtime_environment
 
 
 def make_check(
@@ -81,7 +83,22 @@ def resolve_probe_python(closure: dict) -> Tuple[Optional[str], Optional[str]]:
     return python_env.get("probe_python_path"), python_env.get("selection_reason")
 
 
-def run_script_parse_smoke(entry_script: Optional[Path], probe_python: Optional[str], root: Path, missing_reason: Optional[str]) -> dict:
+def resolve_probe_environment(closure: dict) -> Tuple[Optional[Dict[str, str]], Optional[str]]:
+    system_layer = closure.get("layers", {}).get("system", {})
+    env, source, error = resolve_runtime_environment(system_layer)
+    evidence = source
+    if error:
+        evidence = f"{source}: {error}"
+    return env, evidence
+
+
+def run_script_parse_smoke(
+    entry_script: Optional[Path],
+    probe_python: Optional[str],
+    root: Path,
+    missing_reason: Optional[str],
+    probe_env: Optional[Dict[str, str]],
+) -> dict:
     if not probe_python:
         return make_check(
             "task-smoke-script-parse",
@@ -113,6 +130,7 @@ def run_script_parse_smoke(entry_script: Optional[Path], probe_python: Optional[
             text=True,
             capture_output=True,
             timeout=10,
+            env=probe_env,
         )
     except subprocess.TimeoutExpired as exc:
         return make_check(
@@ -200,6 +218,7 @@ def run_explicit_task_smoke(target: dict, closure: dict, root: Path, timeout_sec
         )
 
     probe_python, missing_reason = resolve_probe_python(closure)
+    probe_env, probe_env_reason = resolve_probe_environment(closure)
     if not probe_python:
         return make_check(
             "task-smoke-executed",
@@ -228,6 +247,7 @@ def run_explicit_task_smoke(target: dict, closure: dict, root: Path, timeout_sec
             text=True,
             capture_output=True,
             timeout=timeout_seconds,
+            env=probe_env,
         )
     except subprocess.TimeoutExpired as exc:
         return make_check(
@@ -262,6 +282,8 @@ def run_explicit_task_smoke(target: dict, closure: dict, root: Path, timeout_sec
 
     if completed.returncode == 0:
         evidence = [f"command={command}"]
+        if probe_env_reason:
+            evidence.append(f"probe_env={probe_env_reason}")
         stdout = (completed.stdout or "").strip()
         if stdout:
             evidence.append(f"stdout={stdout.splitlines()[0]}")
@@ -282,7 +304,11 @@ def run_explicit_task_smoke(target: dict, closure: dict, root: Path, timeout_sec
         "task-smoke-executed",
         "block",
         "Explicit task smoke command failed.",
-        evidence=[f"command={command}", f"error={error}"],
+        evidence=[
+            f"command={command}",
+            f"error={error}",
+            *( [f"probe_env={probe_env_reason}"] if probe_env_reason else [] ),
+        ],
         category_hint="workspace",
         severity="high",
         remediable=False,
@@ -299,9 +325,10 @@ def run_explicit_task_smoke(target: dict, closure: dict, root: Path, timeout_sec
 def run_task_smoke(target: dict, closure: dict, timeout_seconds: int) -> List[dict]:
     root = Path(target["working_dir"]).resolve()
     probe_python, missing_reason = resolve_probe_python(closure)
+    probe_env, _ = resolve_probe_environment(closure)
     entry_script = resolve_entry_script(target, root)
     checks = [
-        run_script_parse_smoke(entry_script, probe_python, root, missing_reason),
+        run_script_parse_smoke(entry_script, probe_python, root, missing_reason, probe_env),
         run_explicit_task_smoke(target, closure, root, timeout_seconds),
     ]
     return checks

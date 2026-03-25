@@ -12,6 +12,8 @@ Current state:
   explicit selected-workspace-Python contract
 - a top-level orchestrator now closes the default no-env -> env-fix -> rerun
   path for workspace-local environments
+- the top-level CLI now accepts `--check`, `--fix`, and `--auto` as
+  compatibility aliases for `--mode`
 - full confidence still requires a full pytest rerun in an environment with
   `pytest` installed and broader real-server regression coverage
 
@@ -40,6 +42,9 @@ Recommended readiness level:
 - `run_readiness_pipeline.py` now provides the missing top-level orchestration
   for `mode=check/fix/auto`, env-fix execution, and one-shot full-pipeline
   re-entry
+- execution-target discovery can now infer `model_path` from local model
+  marker files instead of requiring an explicit input in common inference
+  workspaces
 - explicit task smoke is supported through `task_smoke_cmd`
 - blocker taxonomy is normalized and stable
 - native `env_fix` planning and controlled execution exist
@@ -81,6 +86,11 @@ Recommended readiness level:
   mutation
 - env-fix package planning now filters probe metadata out of package-name hints
   so framework/runtime repair commands stay syntactically valid
+- PTA probing can now discover a local Ascend `set_env.sh` candidate and
+  source it for framework/runtime import probes when the current environment is
+  not already active
+- PTA framework repair now prefers CPU `torch` wheels and installs `torch_npu`
+  separately, avoiding unnecessary NVIDIA dependency pulls on Ascend
 
 ## Evidence Of Stability
 
@@ -95,6 +105,8 @@ Recommended readiness level:
 - `run_readiness_pipeline.py` was manually validated with a fake `uv` tool to
   confirm the `.venv` creation path, two-pass pipeline re-entry, and final
   `python-selected-python=ok` outcome
+- `discover_execution_target.py` was manually validated to infer `model_path`
+  from workspace model markers
 - full pytest rerun is still pending in this workspace because the local
   Python environment used for development does not currently have `pytest`
   installed
@@ -154,6 +166,8 @@ into `ms-cli` runtime behavior is not yet formalized in this repo.
    - one PTA/Ascend workspace with no initial `.venv` and `uv` available
    - one workspace with an existing `.venv` that should be selected directly
    - one workspace where `uv` is missing and the blocker path must remain clear
+   - one workspace where Ascend runtime is only available after sourcing
+     `set_env.sh`
 
 3. Optionally strengthen runtime evidence.
    Add one more controlled smoke tier for frameworks or task kinds where

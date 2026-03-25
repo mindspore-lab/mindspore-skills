@@ -154,6 +154,42 @@ def find_model_markers(root: Path) -> List[str]:
     return markers[:20]
 
 
+def infer_model_path(markers: List[str], root: Path, entry_script: Optional[Path]) -> Optional[str]:
+    if not markers:
+        return None
+
+    scores = {}
+    entry_text = read_text(entry_script) if entry_script else ""
+
+    for marker in markers:
+        marker_path = Path(marker)
+        parent = marker_path.parent
+        if str(parent) in {"", "."}:
+            continue
+
+        score = 1
+        if marker_path.name in {"config.json", "tokenizer.json", "tokenizer_config.json"}:
+            score = 2
+        if marker_path.name == "model.safetensors" or marker_path.suffix == ".ckpt":
+            score = 3
+
+        key = str(parent)
+        scores[key] = scores.get(key, 0) + score
+
+        normalized_parent = key.replace("\\", "/")
+        if entry_text and (normalized_parent in entry_text or parent.name in entry_text):
+            scores[key] += 3
+
+    if not scores:
+        return None
+
+    ranked = sorted(
+        scores.items(),
+        key=lambda item: (-item[1], len(Path(item[0]).parts), item[0]),
+    )
+    return ranked[0][0]
+
+
 def choose_config(configs: List[Path], entry_script: Optional[Path], root: Path) -> Optional[str]:
     if not configs:
         return None
@@ -232,6 +268,15 @@ def build_execution_target(
         if config_path:
             evidence.append("config path inferred from workspace evidence")
 
+    model_path = None
+    if model_path_hint:
+        model_path = str(model_path_hint)
+        evidence.append("explicit model_path input provided")
+    else:
+        model_path = infer_model_path(markers, root, chosen_script)
+        if model_path:
+            evidence.append("model path inferred from workspace model markers")
+
     if target_hint:
         evidence.append("explicit target input provided")
     if task_smoke_cmd_hint:
@@ -256,7 +301,7 @@ def build_execution_target(
         "launch_cmd": launch_cmd,
         "framework_path": framework_path or "unknown",
         "config_path": config_path,
-        "model_path": str(model_path_hint) if model_path_hint else None,
+        "model_path": model_path,
         "dataset_path": str(dataset_path_hint) if dataset_path_hint else None,
         "checkpoint_path": str(checkpoint_path_hint) if checkpoint_path_hint else None,
         "selected_python": python_selection.get("selected_python"),

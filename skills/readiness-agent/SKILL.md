@@ -147,6 +147,12 @@ Recommended helper order for the current deterministic pipeline:
 10. rerun affected checks when `needs_revalidation` is non-empty
 11. `scripts/build_readiness_report.py`
 
+External callers should prefer `scripts/run_readiness_pipeline.py` instead of
+manually chaining internal helper scripts. The top-level entrypoint accepts:
+
+- `--mode check|fix|auto`
+- compatibility aliases `--check`, `--fix`, and `--auto`
+
 ## Stage 0. Selected-Python Resolution
 
 Resolve the single workspace Python interpreter before the rest of the
@@ -169,6 +175,12 @@ If no selected workspace Python is available:
 - in `fix` or `auto` mode, prefer creating or repairing a workspace-local
   environment such as `.venv`, then rerun the full helper pipeline once with
   the newly selected interpreter
+
+For PTA / Ascend paths, downstream probing may source a detected local
+`set_env.sh` automatically to validate runtime importability more accurately.
+When native env-fix repairs a PTA framework path on Ascend, prefer CPU
+`torch` wheels and keep `torch_npu` on the default package source instead of
+pulling CUDA/NVIDIA package sets that are not required for Ascend execution.
 
 ## Stage 1. Execution-Target Discovery
 
