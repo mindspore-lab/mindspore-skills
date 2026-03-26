@@ -135,6 +135,71 @@ def write_sample_profiler_export(root: Path) -> Path:
     return profiler_root
 
 
+def write_sample_inference_hotspot_export(root: Path) -> Path:
+    profiler_root = root / "worker_0_20260326_ascend_pt"
+    ascend = profiler_root / "ASCEND_PROFILER_OUTPUT"
+    cann = profiler_root / "PROF_0" / "mindstudio_profiler_output"
+    ascend.mkdir(parents=True, exist_ok=True)
+    cann.mkdir(parents=True, exist_ok=True)
+
+    (profiler_root / "profiler_metadata.json").write_text("{}", encoding="utf-8")
+    (profiler_root / "profiler_info_0.json").write_text("{}", encoding="utf-8")
+
+    (ascend / "step_trace_time.csv").write_text(
+        "\n".join(
+            [
+                "Step ID,DataTime(ms),ComputeTime(ms),CommunicationTime(ms),IdleGap(ms),StepTime(ms)",
+                "1,4,18,5,31,58",
+                "2,4,19,5,29,57",
+                "3,5,17,5,30,57",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    (ascend / "kernel_details.csv").write_text(
+        "\n".join(
+            [
+                "Kernel Name,Duration(ms)",
+                "trans_TransData_6,40",
+                "aclnnScatter_ScatterElements,24",
+                "aclnnMatmul_MatMulV2,18",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    (ascend / "trace_view.json").write_text(
+        json.dumps(
+            {
+                "events": [
+                    {"name": "host_idle_gap", "duration_ms": 31},
+                    {"name": "launch_overhead", "duration_ms": 16},
+                    {"name": "trans_TransData_6", "duration_ms": 40},
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    (ascend / "communication.json").write_text(
+        json.dumps({"communications": [{"op_name": "AllReduce", "time_ms": 15, "count": 3, "size_mb": 8}]}),
+        encoding="utf-8",
+    )
+    (cann / "op_summary_0.csv").write_text(
+        "\n".join(
+            [
+                "Operator Name,Total Time(ms),Count",
+                "trans_TransData_6,120,3",
+                "aclnnScatter_ScatterElements,72,3",
+                "aclnnMatmul_MatMulV2,54,3",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    return profiler_root
+
+
 def write_validation_metrics(root: Path) -> tuple[Path, Path]:
     before = root / "before-metrics.json"
     after = root / "after-metrics.json"
@@ -309,6 +374,86 @@ def run_inference():
 
 if __name__ == "__main__":
     run_inference()
+""".strip()
+        + "\n",
+        encoding="utf-8",
+    )
+    return script_path
+
+
+def write_sample_perf_inference_script(root: Path) -> Path:
+    script_path = root / "inference.py"
+    script_path.write_text(
+        """
+import time
+
+
+class FakeTensor:
+    def contiguous(self):
+        return self
+
+    def to(self, _device):
+        return self
+
+
+class FakeTokenizer:
+    pad_token_id = 0
+    eos_token_id = 0
+
+    def __len__(self):
+        return 128
+
+    def __call__(self, prompt, return_tensors="pt"):
+        return {"input_ids": FakeTensor(), "prompt": prompt}
+
+
+class FakeModel:
+    def __init__(self):
+        self.device = "cpu"
+        self._warmed = False
+
+    def eval(self):
+        return self
+
+    def generate(self, **kwargs):
+        _ = kwargs
+        if not self._warmed:
+            time.sleep(0.06)
+            self._warmed = True
+        else:
+            time.sleep(0.02)
+        return [0] * 50
+
+
+def main():
+    tokenizer = FakeTokenizer()
+    model = FakeModel()
+    prompts = [
+        "Hello, how are you?",
+        "What is the capital of France?",
+        "Explain quantum computing in one sentence:",
+    ]
+    total_tokens = 0
+    total_time = 0.0
+
+    for prompt in prompts:
+        inputs = tokenizer(prompt, return_tensors="pt")
+        start = time.time()
+        outputs = model.generate(**inputs, max_new_tokens=50, do_sample=True)
+        gen_time = time.time() - start
+        new_tokens = len(outputs)
+        total_tokens += new_tokens
+        total_time += gen_time
+        print(f"Prompt: {prompt}")
+        print(f"Stats: {new_tokens} tokens in {gen_time:.2f}s ({new_tokens / gen_time:.1f} tok/s)")
+
+    print(f"Total tokens: {total_tokens}")
+    print(f"Total time: {total_time:.2f}s")
+    print(f"Average throughput: {total_tokens / total_time:.1f} tok/s")
+
+
+if __name__ == "__main__":
+    main()
 """.strip()
         + "\n",
         encoding="utf-8",

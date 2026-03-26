@@ -4,7 +4,12 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from perf_test_utils import write_sample_profiler_export, write_validation_metrics
+from perf_test_utils import (
+    write_sample_inference_hotspot_export,
+    write_sample_perf_inference_script,
+    write_sample_profiler_export,
+    write_validation_metrics,
+)
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -140,3 +145,41 @@ def test_end_to_end_pipeline_emits_structured_verdict_and_shared_report(tmp_path
     assert (tmp_path / "out" / "meta" / "inputs.json").exists()
     assert (tmp_path / "out" / "meta" / "locator.json").exists()
     assert (tmp_path / "out" / "meta" / "summaries" / "trace_gaps.json").exists()
+
+
+def test_unified_pipeline_runs_diagnosis_trial_and_validation_from_a_single_entrypoint(tmp_path: Path):
+    profiler_root = write_sample_inference_hotspot_export(tmp_path)
+    script_path = write_sample_perf_inference_script(tmp_path)
+    out_dir = tmp_path / "runs" / "unified" / "out"
+
+    run_script(
+        "run_performance_pipeline.py",
+        "--working-dir",
+        str(tmp_path),
+        "--user-problem",
+        "Qwen-like PTA inference on Ascend is too slow. Collect the strongest evidence, apply one copied-script optimization feature, rerun, and show the measured throughput gain.",
+        "--script",
+        str(script_path),
+        "--stack",
+        "pta",
+        "--trace-path",
+        str(profiler_root),
+        "--python",
+        sys.executable,
+        "--output-dir",
+        str(out_dir),
+    )
+
+    report = json.loads((out_dir / "report.json").read_text(encoding="utf-8"))
+    verdict = json.loads((out_dir / "meta" / "performance-verdict.json").read_text(encoding="utf-8"))
+    optimization = json.loads((out_dir / "meta" / "optimization-trial.json").read_text(encoding="utf-8"))
+    before = json.loads((out_dir / "meta" / "before-metrics.json").read_text(encoding="utf-8"))
+    after = json.loads((out_dir / "meta" / "after-metrics.json").read_text(encoding="utf-8"))
+    validation = json.loads((out_dir / "meta" / "validation-comparison.json").read_text(encoding="utf-8"))
+
+    assert report["status"] == "success"
+    assert verdict["status"] == "VALIDATED_IMPROVEMENT"
+    assert optimization["applied_features"]
+    assert before["metrics"]["throughput"] < after["metrics"]["throughput"]
+    assert validation["overall_result"] == "improved"
+    assert (out_dir / "artifacts" / "scripts" / "inference-optimized.py").exists()

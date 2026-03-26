@@ -96,12 +96,20 @@ def main() -> int:
     parser.add_argument("--before-json", required=True, help="before metrics JSON path")
     parser.add_argument("--after-json", required=True, help="after metrics JSON path")
     parser.add_argument("--output-json", required=True, help="path to write the comparison JSON")
+    parser.add_argument("--metric", action="append", dest="metrics", help="optional metric name to compare; repeat to restrict the comparison set")
     args = parser.parse_args()
 
     before = normalize_metrics(read_json(Path(args.before_json)))
     after = normalize_metrics(read_json(Path(args.after_json)))
     if not before or not after:
         raise SystemExit("Both before and after metric files must contain numeric metrics.")
+
+    if args.metrics:
+        selected = set(args.metrics)
+        before = {key: value for key, value in before.items() if key in selected}
+        after = {key: value for key, value in after.items() if key in selected}
+        if not before or not after:
+            raise SystemExit("The requested metric filter removed all comparable numeric metrics.")
 
     report = compare(before, after)
     report["before_ref"] = str(Path(args.before_json).resolve())

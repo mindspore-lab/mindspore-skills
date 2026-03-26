@@ -11,7 +11,8 @@ def test_skill_markers_present():
     assert "## Stage 1. Performance Analyzer" in text
     assert "## Stage 2. Bottleneck Validator" in text
     assert "## Stage 3. Snapshot Builder" in text
-    assert "## Stage 4. Report Builder" in text
+    assert "## Stage 4. Optimization Trial" in text
+    assert "## Stage 5. Report Builder" in text
 
 
 def test_reference_files_exist():

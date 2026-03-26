@@ -40,7 +40,7 @@
                    },
                    {
                        "name":  "performance-agent",
-                       "description":  "Diagnose throughput, latency, memory, utilization, dataloader, and communication bottlenecks after the workload already runs",
+                       "description":  "Run an end-to-end performance workflow on Ascend workloads: collect profiler data when needed, build structured diagnosis artifacts, apply one copied optimization feature, rerun, and validate the measured gain",
                        "path":  "skills/performance-agent/SKILL.md"
                    }
                ]

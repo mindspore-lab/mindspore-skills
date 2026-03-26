@@ -3,9 +3,10 @@
 This document records the current product direction for
 `skills/performance-agent` on `refactor-arch-3.0`.
 
-The active design is a single-path, profiler-led performance diagnosis
-workflow. Older feature-trial ideas are deferred and are not part of the
-runtime control surface.
+The active design is an end-to-end, profiler-led performance workflow:
+diagnosis still starts from structured profiler evidence, but the runtime flow
+now continues into one copied-script optimization trial and a deterministic
+before/after rerun comparison.
 
 ## Current Product State
 
@@ -22,12 +23,16 @@ structured artifacts:
    - operator hotspots
 3. build a machine-readable `PerformanceProfile`
 4. classify ranked bottleneck candidates
-5. compare before and after metrics when provided
-6. emit:
+5. apply one copied-script optimization feature pack
+6. rerun the workload and compare before and after metrics
+7. emit:
    - `out/report.json`
    - `out/report.md`
    - `out/meta/performance-profile.json`
    - `out/meta/bottlenecks.json`
+   - `out/meta/optimization-trial.json`
+   - `out/meta/before-metrics.json`
+   - `out/meta/after-metrics.json`
    - `out/meta/performance-verdict.json`
    - `out/meta/validation-comparison.json`
    - `out/artifacts/perf.lock.json`
@@ -37,9 +42,10 @@ diagnosis when structured summaries are available.
 
 ## Product Rules
 
-- Keep the workflow single-path and profiler-led.
+- Keep the workflow profiler-led, but not diagnosis-only.
 - Treat structured helper outputs as the primary diagnosis substrate.
 - Preserve one dominant bottleneck at a time.
+- Apply one copied optimization trial at a time.
 - Prefer machine-readable outputs over narrative-only explanations.
 - Require validation evidence before claiming that an optimization worked.
 - Ask for the smallest missing high-signal trace artifact when evidence is
@@ -71,18 +77,13 @@ The skill still needs an explicit adapter contract for `ms-cli` integration:
 - input mapping from host runtime into skill inputs
 - output surfacing rules for `report.json`, `report.md`, and verdict payloads
 - fallback rules when trace discovery is weak or missing
+- copied-script optimization trial surfacing rules
 
 ### 4. Validation Normalization
 
 The deterministic validation comparator supports the current core metrics, but
 real workloads may expose additional names or units. Normalizing these inputs
 without widening the contract too much is the next product hardening task.
-
-## Deferred Items
-
-The old two-path design and pre-profiler feature-trial path are deferred. They
-may be revisited later, but they are not active runtime behavior for the
-current product line.
 
 ## Notes
 

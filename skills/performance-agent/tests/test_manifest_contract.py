@@ -14,7 +14,7 @@ def test_manifest_contract_fields_present():
     text = _manifest_text()
     assert 'name: "performance-agent"' in text
     assert 'display_name: "Performance Agent"' in text
-    assert 'version: "0.4.0"' in text
+    assert 'version: "0.5.0"' in text
     assert 'type: "manual"' in text
     assert 'path: "SKILL.md"' in text
     assert 'network: "none"' in text
@@ -35,13 +35,17 @@ def test_manifest_declares_perf_inputs_and_outputs():
     assert 'out_dir_layout' in text
 
 
-def test_skill_describes_four_stage_performance_workflow():
+def test_skill_describes_end_to_end_performance_workflow():
     text = SKILL.read_text(encoding="utf-8")
     assert "# Performance Agent" in text
     assert "1. `performance-analyzer`" in text
     assert "2. `bottleneck-validator`" in text
     assert "3. `snapshot-builder`" in text
-    assert "4. `report-builder`" in text
+    assert "4. `optimization-trial`" in text
+    assert "5. `report-builder`" in text
+    assert "scripts/run_performance_pipeline.py" in text
+    assert "scripts/capture_run_metrics.py" in text
+    assert "scripts/apply_performance_features.py" in text
     assert "scripts/locate_profiler_output.py" in text
     assert "scripts/summarize_trace_gaps.py" in text
     assert "scripts/build_performance_report.py" in text

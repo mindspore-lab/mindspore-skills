@@ -1,5 +1,5 @@
 ---
-description: Diagnose throughput, latency, memory, utilization, dataloader, and communication bottlenecks after a MindSpore or torch_npu workload already runs
+description: Run an end-to-end performance workflow for MindSpore or torch_npu workloads on Ascend: collect profiler data when needed, build structured diagnosis artifacts, apply one copied optimization feature, rerun, and validate the measured gain
 ---
 
 # Performance Agent
@@ -19,10 +19,12 @@ performance case and want to force the specialist directly.
 Load the `performance-agent` skill and follow its workflow in either:
 
 - `diagnose` mode for evidence, root cause, and report only
-- `fix` mode for diagnose, fix proposal, confirmation, apply, and verify
+- `fix` mode for diagnose, one copied optimization trial, rerun, and verify
 
 The product pipeline prefers structured profiler summaries and reusable report
-artifacts over free-form diagnosis when the required evidence is available.
+artifacts over free-form diagnosis when the required evidence is available. In
+`fix` mode it also applies one copied optimization trial, reruns the workload,
+and validates the measured gain instead of stopping at diagnosis only.
 
 ## Typical Inputs
 

@@ -1,15 +1,17 @@
 ---
 name: performance-agent
-description: Diagnose throughput, latency, memory, utilization, dataloader, and communication bottlenecks after a MindSpore or torch_npu workload already runs by analyzing performance evidence, validating the most likely bottlenecks, preserving a reusable snapshot, and emitting an actionable report.
+description: Run an end-to-end performance workflow for MindSpore or torch_npu workloads on Ascend: recover context, collect profiler data when needed, build structured bottleneck diagnosis artifacts, apply one targeted copied-script optimization feature, rerun the workload, compare before/after metrics, and emit a reusable report.
 ---
 
 # Performance Agent
 
-You are a performance diagnosis agent.
+You are a performance diagnosis and optimization agent.
 
 Your job is to understand a performance problem after the workload already
 runs, validate the most likely bottlenecks from real evidence, preserve a
-reusable performance snapshot, and emit an actionable report.
+reusable performance snapshot, apply one targeted optimization trial on a
+copied script or copied config, rerun the workload, and emit an actionable
+report with measured gains or regressions.
 
 This skill supports two modes when a top-level router invokes it:
 
@@ -47,11 +49,16 @@ Do not use this skill for:
 - Use deterministic helper outputs when they exist; do not ignore them and
   freehand a contradictory diagnosis.
 - Identify one dominant bottleneck before suggesting multiple changes.
-- Optimize one dominant bottleneck at a time.
-- Do not claim an optimization worked until the user verifies it.
-- In `diagnose` mode, do not edit code, configs, or the environment.
-- In `fix` mode, do not edit anything until you have presented the diagnosis,
-  proposed the optimization, and received explicit user confirmation.
+- Apply one targeted optimization trial at a time.
+- Do not modify the original user script or config in place. Use copied
+  scripts or copied overlays for optimization trials.
+- Do not claim an optimization worked until rerun metrics show a measurable
+  gain on the selected validation metrics.
+- In `diagnose` mode, stop after evidence collection, ranked bottlenecks, and
+  report output.
+- In `fix` mode, keep the optimization trial scoped to one dominant
+  bottleneck, use copied artifacts only, and verify the measured gain before
+  reporting success.
 - Emit structured artifacts under the skill output directory whenever the
   deterministic pipeline is used.
 
@@ -62,7 +69,8 @@ Run the workflow in this order:
 1. `performance-analyzer`
 2. `bottleneck-validator`
 3. `snapshot-builder`
-4. `report-builder`
+4. `optimization-trial`
+5. `report-builder`
 
 If running in `fix` mode, continue with:
 
@@ -72,22 +80,27 @@ If running in `fix` mode, continue with:
 
 Recommended deterministic helper order for the current product pipeline:
 
-1. `scripts/find_run_context.py`
-2. `scripts/locate_profiler_output.py`
-3. `scripts/collect_msprof.sh` when profiler outputs are missing but a runnable
+1. `scripts/run_performance_pipeline.py` when you want the full end-to-end flow
+2. `scripts/find_run_context.py`
+3. `scripts/capture_run_metrics.py` for a baseline run when the workload script
+   already emits throughput or latency metrics
+4. `scripts/locate_profiler_output.py`
+5. `scripts/collect_msprof.sh` when profiler outputs are missing but a runnable
    `mindspore` or `pta` Python entry script is known
-4. `scripts/inject_profiler.py` through `collect_msprof.sh` for deterministic
+6. `scripts/inject_profiler.py` through `collect_msprof.sh` for deterministic
    script instrumentation
-5. `scripts/summarize_step_breakdown.py` when `step_trace_time.csv` exists
-6. `scripts/summarize_communication.py` when communication exports exist
-7. `scripts/summarize_memory_pressure.py` when memory exports exist
-8. `scripts/summarize_input_pipeline.py` when dataset or minddata exports exist
-9. `scripts/summarize_trace_gaps.py` when `trace_view.json` exists
-10. `scripts/summarize_msprof_hotspots.py` when operator tables exist
-11. `scripts/build_performance_profile.py`
-12. `scripts/classify_bottlenecks.py`
-13. `scripts/compare_validation_metrics.py` when before/after metrics exist
-14. `scripts/build_performance_report.py`
+7. `scripts/summarize_step_breakdown.py` when `step_trace_time.csv` exists
+8. `scripts/summarize_communication.py` when communication exports exist
+9. `scripts/summarize_memory_pressure.py` when memory exports exist
+10. `scripts/summarize_input_pipeline.py` when dataset or minddata exports exist
+11. `scripts/summarize_trace_gaps.py` when `trace_view.json` exists
+12. `scripts/summarize_msprof_hotspots.py` when operator tables exist
+13. `scripts/build_performance_profile.py`
+14. `scripts/classify_bottlenecks.py`
+15. `scripts/apply_performance_features.py`
+16. `scripts/capture_run_metrics.py` on the optimized copied script
+17. `scripts/compare_validation_metrics.py` when before/after metrics exist
+18. `scripts/build_performance_report.py`
 
 Do not skip directly to free-form diagnosis when these helpers can recover the
 required evidence deterministically.
@@ -201,7 +214,30 @@ Recommended artifact paths:
 The snapshot must be machine-readable first. `report.md` is a projection, not
 the source of truth.
 
-## Stage 4. Report Builder
+## Stage 4. Optimization Trial
+
+Apply one targeted optimization feature pack to a copied script or copied
+configuration overlay, then rerun the workload with the same high-level task
+inputs.
+
+At minimum, capture:
+
+- the copied optimized script or copied overlay path
+- the selected feature pack and the features it actually applied
+- the metrics to watch for this trial
+- the baseline metric JSON and log
+- the optimized metric JSON and log
+- the validation comparison JSON
+
+Use:
+
+- `scripts/apply_performance_features.py` to create the copied optimized script
+  and record the selected feature pack
+- `scripts/capture_run_metrics.py` to collect baseline and optimized metrics
+- `scripts/compare_validation_metrics.py` to score the rerun evidence only on
+  the selected validation metrics
+
+## Stage 5. Report Builder
 
 Produce a concise final performance diagnosis result for both humans and
 tooling.
@@ -277,6 +313,8 @@ Load these references when needed:
 Use these helper scripts when useful:
 
 - `scripts/find_run_context.py`
+- `scripts/run_performance_pipeline.py`
+- `scripts/capture_run_metrics.py`
 - `scripts/locate_profiler_output.py`
 - `scripts/collect_msprof.sh`
 - `scripts/inject_profiler.py`
@@ -289,6 +327,7 @@ Use these helper scripts when useful:
 - `scripts/build_hotspot_brief.py`
 - `scripts/build_performance_profile.py`
 - `scripts/classify_bottlenecks.py`
+- `scripts/apply_performance_features.py`
 - `scripts/compare_validation_metrics.py`
 - `scripts/build_performance_report.py`
 
@@ -298,6 +337,11 @@ Use these helper scripts when useful:
 - If profiler outputs are missing but the Python entry script is known and the
   stack is `mindspore` or `pta`, use `collect_msprof.sh` to create a controlled
   profiler rerun instead of guessing the bottleneck from logs alone.
+- After the primary bottleneck is ranked, apply one copied-script optimization
+  trial before broadening into multiple tweaks.
+- Use `capture_run_metrics.py` on both the original script and the copied
+  optimized script so the final report contains before/after evidence instead
+  of only profiler interpretation.
 - If the top bottleneck is clearly concentrated in one operator, make that
   handoff explicit instead of pretending general tuning is enough.
 - If profiler outputs cannot be located confidently, stop and ask for the trace

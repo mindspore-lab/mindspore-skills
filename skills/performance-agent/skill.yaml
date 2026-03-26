@@ -1,8 +1,8 @@
 schema_version: "1.1.0"
 name: "performance-agent"
 display_name: "Performance Agent"
-description: "Diagnose throughput, latency, memory, utilization, dataloader, and communication bottlenecks after a MindSpore or torch_npu workload already runs by locating profiler exports, building deterministic multi-dimensional summaries, validating the most likely bottlenecks, and emitting structured report artifacts."
-version: "0.4.0"
+description: "Run an end-to-end performance workflow for MindSpore or torch_npu workloads on Ascend: recover context, collect profiler data when needed, build structured bottleneck diagnosis artifacts, apply one targeted copied-script optimization feature, rerun the workload, compare before/after metrics, and emit a reusable report."
+version: "0.5.0"
 
 entry:
   type: "manual"

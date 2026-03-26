@@ -124,7 +124,13 @@ def map_verdict_status(
 
 
 def build_verdict(
-    locate: dict, profile: dict, bottlenecks: dict, validation: Optional[dict]
+    locate: dict,
+    profile: dict,
+    bottlenecks: dict,
+    validation: Optional[dict],
+    optimization_ref: Optional[str],
+    before_metrics_ref: Optional[str],
+    after_metrics_ref: Optional[str],
 ) -> dict:
     primary = bottlenecks.get("primary_candidate", {})
     status, summary, next_action = map_verdict_status(
@@ -159,6 +165,9 @@ def build_verdict(
             "selected_trace_root": locate.get("selected_root"),
             "selected_files": locate.get("selected_files"),
             "summary_refs": profile.get("summary_refs", {}),
+            "optimization_ref": optimization_ref,
+            "before_metrics_ref": before_metrics_ref,
+            "after_metrics_ref": after_metrics_ref,
         },
     }
 
@@ -248,6 +257,13 @@ def render_markdown(verdict: dict) -> str:
         lines.append(f"- `{item['name']}` (confidence={item['confidence']})")
         for evidence in item.get("evidence", []):
             lines.append(f"  evidence: {evidence}")
+    sources = verdict.get("sources", {})
+    if sources.get("optimization_ref"):
+        lines.extend(["", "## Trial", "", f"- optimization_ref: `{sources['optimization_ref']}`"])
+        if sources.get("before_metrics_ref"):
+            lines.append(f"- before_metrics_ref: `{sources['before_metrics_ref']}`")
+        if sources.get("after_metrics_ref"):
+            lines.append(f"- after_metrics_ref: `{sources['after_metrics_ref']}`")
     lines.extend(["", "## Verify", ""])
     validation = verdict.get("validation_result")
     if validation:
@@ -296,6 +312,9 @@ def main() -> int:
     parser.add_argument("--output-verdict-json", help="optional path for performance verdict JSON")
     parser.add_argument("--locate-json", help="optional locator JSON path")
     parser.add_argument("--validation-json", help="optional validation comparison JSON path")
+    parser.add_argument("--optimization-json", help="optional applied optimization metadata JSON path")
+    parser.add_argument("--before-metrics-json", help="optional before metrics JSON path")
+    parser.add_argument("--after-metrics-json", help="optional after metrics JSON path")
     parser.add_argument("--working-dir", default=".", help="workspace root")
     parser.add_argument("--user-problem", default="", help="user problem summary")
     args = parser.parse_args()
@@ -312,6 +331,9 @@ def main() -> int:
     profile_copy = out_root / "meta" / "performance-profile.json"
     bottlenecks_copy = out_root / "meta" / "bottlenecks.json"
     validation_copy = out_root / "meta" / "validation-comparison.json" if validation else None
+    optimization_copy = out_root / "meta" / "optimization-trial.json" if args.optimization_json else None
+    before_metrics_copy = out_root / "meta" / "before-metrics.json" if args.before_metrics_json else None
+    after_metrics_copy = out_root / "meta" / "after-metrics.json" if args.after_metrics_json else None
     locator_copy = out_root / "meta" / "locator.json"
     summaries_root = out_root / "meta" / "summaries"
     perf_lock_json = out_root / "artifacts" / "perf.lock.json"
@@ -329,14 +351,34 @@ def main() -> int:
     copied_validation = None
     if validation_copy is not None:
         copied_validation = copy_json_artifact(args.validation_json, validation_copy, validation)
+    if optimization_copy is not None:
+        copy_json_artifact(args.optimization_json, optimization_copy, {})
+    if before_metrics_copy is not None:
+        copy_json_artifact(args.before_metrics_json, before_metrics_copy, {})
+    if after_metrics_copy is not None:
+        copy_json_artifact(args.after_metrics_json, after_metrics_copy, {})
     copied_summaries = copy_summary_artifacts(copied_profile.get("summary_refs", {}), summaries_root)
 
-    verdict = build_verdict(copied_locator, copied_profile, copied_bottlenecks, copied_validation)
+    verdict = build_verdict(
+        copied_locator,
+        copied_profile,
+        copied_bottlenecks,
+        copied_validation,
+        str(optimization_copy) if optimization_copy is not None else None,
+        str(before_metrics_copy) if before_metrics_copy is not None else None,
+        str(after_metrics_copy) if after_metrics_copy is not None else None,
+    )
     verdict["sources"]["locator_ref"] = str(locator_copy)
     verdict["sources"]["summary_artifacts"] = copied_summaries
 
     extra_artifacts: list[Path] = [locator_copy]
     extra_artifacts.extend(Path(path) for path in copied_summaries.values())
+    if optimization_copy is not None:
+        extra_artifacts.append(optimization_copy)
+    if before_metrics_copy is not None:
+        extra_artifacts.append(before_metrics_copy)
+    if after_metrics_copy is not None:
+        extra_artifacts.append(after_metrics_copy)
     shared_report = build_shared_report(
         verdict,
         run_id,

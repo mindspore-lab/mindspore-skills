@@ -8,7 +8,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from perf_test_utils import (
     write_fake_mindspore_profiler_package,
     write_fake_pta_profiler_package,
+    write_sample_inference_hotspot_export,
     write_sample_ms_entry_script,
+    write_sample_perf_inference_script,
     write_sample_profiler_export,
     write_sample_pta_loop_script,
     write_validation_metrics,
@@ -287,3 +289,110 @@ def test_profile_classifier_and_validation_comparison_produce_ranked_structured_
     assert profile["available_artifacts"]["trace_gap_summary"] is True
     assert bottlenecks["primary_candidate"]["name"] == "communication"
     assert validation["overall_result"] == "improved"
+
+
+def test_capture_run_metrics_extracts_numeric_metrics_from_workload_stdout(tmp_path: Path):
+    script_path = write_sample_perf_inference_script(tmp_path)
+    output_json = tmp_path / "metrics.json"
+    output_log = tmp_path / "metrics.log"
+
+    run_script(
+        "capture_run_metrics.py",
+        "--python",
+        sys.executable,
+        "--script",
+        str(script_path),
+        "--working-dir",
+        str(tmp_path),
+        "--output-json",
+        str(output_json),
+        "--output-log",
+        str(output_log),
+        "--label",
+        "baseline",
+    )
+
+    payload = json.loads(output_json.read_text(encoding="utf-8"))
+    assert payload["label"] == "baseline"
+    assert payload["metrics"]["throughput"] > 0
+    assert payload["metrics"]["first_prompt_throughput"] < payload["metrics"]["steady_state_throughput"]
+    assert output_log.exists()
+
+
+def test_apply_performance_features_creates_optimized_copy_and_feature_metadata(tmp_path: Path):
+    profiler_root = write_sample_inference_hotspot_export(tmp_path)
+    script_path = write_sample_perf_inference_script(tmp_path)
+    locate_json = tmp_path / "locate.json"
+    step_json = tmp_path / "step.json"
+    trace_gaps_json = tmp_path / "trace-gaps.json"
+    hotspot_json = tmp_path / "hotspot.json"
+    profile_json = tmp_path / "profile.json"
+    bottlenecks_json = tmp_path / "bottlenecks.json"
+    applied_json = tmp_path / "optimization.json"
+    optimized_script = tmp_path / "inference-optimized.py"
+
+    run_script("locate_profiler_output.py", "--trace-path", str(profiler_root), "--output-json", str(locate_json))
+    run_script("summarize_step_breakdown.py", "--trace-root", str(profiler_root), "--output-json", str(step_json))
+    run_script("summarize_trace_gaps.py", "--trace-root", str(profiler_root), "--output-json", str(trace_gaps_json))
+    run_script(
+        "summarize_msprof_hotspots.py",
+        "--input-dir",
+        str(profiler_root),
+        "--output-md",
+        str(tmp_path / "hotspot.md"),
+        "--output-json",
+        str(hotspot_json),
+    )
+    run_script(
+        "build_performance_profile.py",
+        "--working-dir",
+        str(tmp_path),
+        "--user-problem",
+        "Ascend PTA inference throughput is low and a TransData hotspot dominates the trace.",
+        "--locate-json",
+        str(locate_json),
+        "--step-json",
+        str(step_json),
+        "--trace-gaps-json",
+        str(trace_gaps_json),
+        "--hotspot-json",
+        str(hotspot_json),
+        "--output-json",
+        str(profile_json),
+    )
+    run_script(
+        "classify_bottlenecks.py",
+        "--profile-json",
+        str(profile_json),
+        "--step-json",
+        str(step_json),
+        "--trace-gaps-json",
+        str(trace_gaps_json),
+        "--hotspot-json",
+        str(hotspot_json),
+        "--output-json",
+        str(bottlenecks_json),
+    )
+    run_script(
+        "apply_performance_features.py",
+        "--profile-json",
+        str(profile_json),
+        "--bottlenecks-json",
+        str(bottlenecks_json),
+        "--source-script",
+        str(script_path),
+        "--output-script",
+        str(optimized_script),
+        "--output-json",
+        str(applied_json),
+        "--hotspot-json",
+        str(hotspot_json),
+    )
+
+    metadata = json.loads(applied_json.read_text(encoding="utf-8"))
+    optimized_source = optimized_script.read_text(encoding="utf-8")
+    assert metadata["applied_features"]
+    assert "warmup_inference" in metadata["selected_features"]
+    assert "contiguous_inputs" in metadata["selected_features"]
+    assert "os.environ.setdefault" in optimized_source
+    assert "_perf_warmup_prompt" in optimized_source

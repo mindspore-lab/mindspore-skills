@@ -10,8 +10,9 @@ def test_behavior_rules_require_running_workload_and_single_bottleneck_focus():
     assert "Prefer real profiler evidence over broad upfront guesswork." in text
     assert "Use deterministic helper outputs when they exist" in text
     assert "Identify one dominant bottleneck before suggesting multiple changes." in text
-    assert "Optimize one dominant bottleneck at a time." in text
-    assert "Do not claim an optimization worked until the user verifies it." in text
+    assert "Apply one targeted optimization trial at a time." in text
+    assert "Do not modify the original user script or config in place." in text
+    assert "Do not claim an optimization worked until rerun metrics show a measurable" in text
 
 
 def test_performance_profile_and_bottleneck_validation_are_present():
@@ -31,6 +32,8 @@ def test_references_and_scripts_are_declared():
     assert "`scripts/locate_profiler_output.py`" in text
     assert "`scripts/collect_msprof.sh`" in text
     assert "`scripts/inject_profiler.py`" in text
+    assert "`scripts/run_performance_pipeline.py`" in text
+    assert "`scripts/capture_run_metrics.py`" in text
     assert "`scripts/summarize_step_breakdown.py`" in text
     assert "`scripts/summarize_communication.py`" in text
     assert "`scripts/summarize_memory_pressure.py`" in text
@@ -39,5 +42,6 @@ def test_references_and_scripts_are_declared():
     assert "`scripts/summarize_msprof_hotspots.py`" in text
     assert "`scripts/build_performance_profile.py`" in text
     assert "`scripts/classify_bottlenecks.py`" in text
+    assert "`scripts/apply_performance_features.py`" in text
     assert "`scripts/compare_validation_metrics.py`" in text
     assert "`scripts/build_performance_report.py`" in text
