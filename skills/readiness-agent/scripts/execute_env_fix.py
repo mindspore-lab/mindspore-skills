@@ -256,9 +256,11 @@ def preferred_hf_endpoint() -> str:
     return os.environ.get("HF_ENDPOINT") or DEFAULT_HF_ENDPOINT
 
 
-def huggingface_download_env() -> dict:
+def huggingface_download_env(working_dir: Optional[Path] = None) -> dict:
     env = dict(os.environ)
     env["HF_ENDPOINT"] = preferred_hf_endpoint()
+    if not env.get("HUGGINGFACE_HUB_CACHE") and not env.get("HF_DATASETS_CACHE") and not env.get("HF_HOME") and working_dir:
+        env["HF_HOME"] = str((working_dir / "huggingface-cache").resolve())
     return env
 
 
@@ -295,7 +297,12 @@ def scaffold_example_entry_script(template_path: Path, destination_path: Path) -
     return True, f"scaffolded entry script at {destination_path}"
 
 
-def download_huggingface_model_asset(env_root: Path, repo_id: str, destination_path: Path) -> Tuple[bool, str]:
+def download_huggingface_model_asset(
+    env_root: Path,
+    repo_id: str,
+    destination_path: Path,
+    working_dir: Optional[Path],
+) -> Tuple[bool, str]:
     ok, message = install_packages(env_root, ["huggingface_hub"])
     if not ok:
         return False, message
@@ -303,7 +310,7 @@ def download_huggingface_model_asset(env_root: Path, repo_id: str, destination_p
         env_root,
         HF_MODEL_DOWNLOAD_CODE,
         [repo_id, str(destination_path)],
-        env=huggingface_download_env(),
+        env=huggingface_download_env(working_dir),
     )
 
 
@@ -312,6 +319,7 @@ def download_huggingface_dataset_asset(
     repo_id: str,
     destination_path: Path,
     dataset_split: Optional[str],
+    working_dir: Optional[Path],
 ) -> Tuple[bool, str]:
     ok, message = install_packages(env_root, ["datasets"])
     if not ok:
@@ -323,7 +331,7 @@ def download_huggingface_dataset_asset(
         env_root,
         HF_DATASET_DOWNLOAD_CODE,
         arguments,
-        env=huggingface_download_env(),
+        env=huggingface_download_env(working_dir),
     )
 
 
@@ -496,6 +504,7 @@ def execute_action(action: dict, args: argparse.Namespace) -> dict:
 
     if action_type == "download_huggingface_model_asset":
         env_root = resolve_env_root(args)
+        working_dir = Path(args.working_dir).resolve() if args.working_dir else None
         repo_id = str(action.get("repo_id") or "")
         destination_value = str(action.get("destination_path") or "")
         destination_path = Path(destination_value) if destination_value else Path()
@@ -516,13 +525,14 @@ def execute_action(action: dict, args: argparse.Namespace) -> dict:
             result["status"] = "failed"
             result["reason"] = "repo_id and destination_path are required for model asset download"
             return result
-        ok, message = download_huggingface_model_asset(env_root, repo_id, destination_path)
+        ok, message = download_huggingface_model_asset(env_root, repo_id, destination_path, working_dir)
         result["status"] = "executed" if ok else "failed"
         result["reason"] = message
         return result
 
     if action_type == "download_huggingface_dataset_asset":
         env_root = resolve_env_root(args)
+        working_dir = Path(args.working_dir).resolve() if args.working_dir else None
         repo_id = str(action.get("repo_id") or "")
         destination_value = str(action.get("destination_path") or "")
         destination_path = Path(destination_value) if destination_value else Path()
@@ -544,7 +554,13 @@ def execute_action(action: dict, args: argparse.Namespace) -> dict:
             result["status"] = "failed"
             result["reason"] = "repo_id and destination_path are required for dataset asset download"
             return result
-        ok, message = download_huggingface_dataset_asset(env_root, repo_id, destination_path, dataset_split)
+        ok, message = download_huggingface_dataset_asset(
+            env_root,
+            repo_id,
+            destination_path,
+            dataset_split,
+            working_dir,
+        )
         result["status"] = "executed" if ok else "failed"
         result["reason"] = message
         return result

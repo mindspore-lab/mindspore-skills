@@ -115,6 +115,8 @@ def test_discover_execution_target_applies_qwen_huggingface_recipe(tmp_path: Pat
     assert target["entry_script"] == "workspace-assets/examples/train_qwen3_0_6b.py"
     assert target["model_hub_id"] == "Qwen/Qwen3-0.6B"
     assert target["dataset_hub_id"] == "karthiksagarn/astro_horoscope"
+    assert target["model_path"] is None
+    assert target["dataset_path"] is None
     assert target["dataset_split"] == "train"
     assert target["reference_transformers_version"] == "4.57.6"
     assert target["example_recipe_id"] == "qwen3-0.6b-hf-training"
@@ -139,8 +141,38 @@ def test_discover_execution_target_keeps_existing_training_script_when_recipe_ma
     target = json.loads(output.read_text(encoding="utf-8"))
     assert target["entry_script"] == "train.py"
     assert target["example_recipe_id"] == "qwen3-0.6b-hf-training"
-    assert target["model_path"] == "workspace-assets/models/Qwen__Qwen3-0.6B"
-    assert target["dataset_path"] == "workspace-assets/datasets/karthiksagarn__astro_horoscope"
+    assert target["model_path"] is None
+    assert target["dataset_path"] is None
+    assert target["model_hub_id"] == "Qwen/Qwen3-0.6B"
+    assert target["dataset_hub_id"] == "karthiksagarn/astro_horoscope"
+
+
+def test_discover_execution_target_extracts_remote_huggingface_assets_from_script(tmp_path: Path):
+    (tmp_path / "train.py").write_text(
+        (
+            'from datasets import load_dataset\n'
+            'from transformers import AutoTokenizer\n'
+            'model_name = "Qwen/Qwen3-0.6B"\n'
+            'dataset_name = "karthiksagarn/astro_horoscope"\n'
+            'tokenizer = AutoTokenizer.from_pretrained(model_name)\n'
+            'dataset = load_dataset(dataset_name, split="train")\n'
+        ),
+        encoding="utf-8",
+    )
+    output = tmp_path / "target.json"
+
+    run_script(
+        "discover_execution_target.py",
+        "--working-dir",
+        str(tmp_path),
+        "--output-json",
+        str(output),
+    )
+    target = json.loads(output.read_text(encoding="utf-8"))
+    assert target["entry_script"] == "train.py"
+    assert target["model_hub_id"] == "Qwen/Qwen3-0.6B"
+    assert target["dataset_hub_id"] == "karthiksagarn/astro_horoscope"
+    assert target["dataset_split"] == "train"
 
 
 def test_discover_execution_target_defaults_training_framework_to_pta_without_explicit_mindspore(tmp_path: Path):
@@ -467,6 +499,94 @@ def test_build_dependency_closure_uses_recipe_runtime_profile_without_entry_scri
     assert workspace["entry_script"]["source"] == "bundled-example"
     assert workspace["model_path"]["asset_provider"] == "huggingface"
     assert workspace["dataset_path"]["asset_provider"] == "huggingface"
+
+
+def test_build_dependency_closure_prefers_explicit_hf_cache_envs(tmp_path: Path):
+    target_path = tmp_path / "target.json"
+    closure_path = tmp_path / "closure.json"
+    hub_cache = tmp_path / "custom-hf-cache" / "hub"
+    datasets_cache = tmp_path / "custom-hf-cache" / "datasets"
+    hf_home = tmp_path / "ignored-hf-home"
+    target_path.write_text(
+        json.dumps(
+            {
+                "working_dir": str(tmp_path),
+                "target_type": "training",
+                "entry_script": "workspace-assets/examples/train_qwen3_0_6b.py",
+                "framework_path": "pta",
+                "selected_python": sys.executable,
+                "model_hub_id": "Qwen/Qwen3-0.6B",
+                "dataset_hub_id": "karthiksagarn/astro_horoscope",
+                "dataset_split": "train",
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    env = dict(os.environ)
+    env["HUGGINGFACE_HUB_CACHE"] = str(hub_cache)
+    env["HF_DATASETS_CACHE"] = str(datasets_cache)
+    env["HF_HOME"] = str(hf_home)
+    env["HF_ENDPOINT"] = "http://127.0.0.1:9"
+
+    run_script(
+        "build_dependency_closure.py",
+        "--target-json",
+        str(target_path),
+        "--output-json",
+        str(closure_path),
+        env=env,
+    )
+    closure = json.loads(closure_path.read_text(encoding="utf-8"))
+    remote_assets = closure["layers"]["remote_assets"]
+    cache_layout = remote_assets["cache_layout"]
+
+    assert cache_layout["source"] == "explicit_cache_env"
+    assert cache_layout["hf_home"] == str(hf_home.resolve())
+    assert cache_layout["hub_cache"] == str(hub_cache.resolve())
+    assert cache_layout["datasets_cache"] == str(datasets_cache.resolve())
+
+
+def test_build_dependency_closure_uses_custom_hf_endpoint_and_working_dir_cache_default(tmp_path: Path):
+    target_path = tmp_path / "target.json"
+    closure_path = tmp_path / "closure.json"
+    target_path.write_text(
+        json.dumps(
+            {
+                "working_dir": str(tmp_path),
+                "target_type": "training",
+                "entry_script": "workspace-assets/examples/train_qwen3_0_6b.py",
+                "framework_path": "pta",
+                "selected_python": sys.executable,
+                "model_hub_id": "Qwen/Qwen3-0.6B",
+                "dataset_hub_id": "karthiksagarn/astro_horoscope",
+                "dataset_split": "train",
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    env = dict(os.environ)
+    env.pop("HUGGINGFACE_HUB_CACHE", None)
+    env.pop("HF_DATASETS_CACHE", None)
+    env.pop("HF_HOME", None)
+    env["HF_ENDPOINT"] = "http://127.0.0.1:10/"
+
+    run_script(
+        "build_dependency_closure.py",
+        "--target-json",
+        str(target_path),
+        "--output-json",
+        str(closure_path),
+        env=env,
+    )
+    closure = json.loads(closure_path.read_text(encoding="utf-8"))
+    remote_assets = closure["layers"]["remote_assets"]
+    cache_layout = remote_assets["cache_layout"]
+
+    assert remote_assets["hf_endpoint"] == "http://127.0.0.1:10"
+    assert cache_layout["source"] == "working_dir_default"
+    assert cache_layout["hf_home"] == str((tmp_path / "huggingface-cache").resolve())
 
 
 def test_build_dependency_closure_adds_ascend_hidden_runtime_profile_for_mindspore(tmp_path: Path):
@@ -1174,7 +1294,7 @@ def test_collect_readiness_checks_flags_missing_framework_packages(tmp_path: Pat
     assert by_id["framework-importability"]["category_hint"] == "framework"
 
 
-def test_collect_readiness_checks_marks_huggingface_assets_as_remediable(tmp_path: Path):
+def test_collect_readiness_checks_accepts_remote_huggingface_assets(tmp_path: Path):
     target_path = tmp_path / "target.json"
     closure_path = tmp_path / "closure.json"
     checks_path = tmp_path / "checks.json"
@@ -1215,8 +1335,35 @@ def test_collect_readiness_checks_marks_huggingface_assets_as_remediable(tmp_pat
                         "required_imports": [],
                         "import_probes": {},
                     },
-                        "workspace_assets": {
-                            "entry_script": {
+                    "remote_assets": {
+                        "hf_endpoint": "https://hf-mirror.com",
+                        "hf_endpoint_source": "default",
+                        "endpoint_reachable": True,
+                        "cache_layout": {
+                            "source": "working_dir_default",
+                            "hub_cache": str(tmp_path / "huggingface-cache" / "hub"),
+                            "hub_cache_writable": True,
+                            "datasets_cache": str(tmp_path / "huggingface-cache" / "datasets"),
+                            "datasets_cache_writable": True,
+                        },
+                        "assets": {
+                            "model_path": {
+                                "repo_id": "Qwen/Qwen3-0.6B",
+                                "repo_type": "model",
+                                "cache_path": str(tmp_path / "huggingface-cache" / "hub"),
+                                "ready": True,
+                            },
+                            "dataset_path": {
+                                "repo_id": "karthiksagarn/astro_horoscope",
+                                "repo_type": "dataset",
+                                "dataset_split": "train",
+                                "cache_path": str(tmp_path / "huggingface-cache" / "datasets"),
+                                "ready": True,
+                            },
+                        },
+                    },
+                    "workspace_assets": {
+                        "entry_script": {
                             "path": "workspace-assets/examples/train_qwen3_0_6b.py",
                             "exists": False,
                             "required": True,
@@ -1225,21 +1372,25 @@ def test_collect_readiness_checks_marks_huggingface_assets_as_remediable(tmp_pat
                             "example_recipe_id": "qwen3-0.6b-hf-training",
                         },
                         "model_path": {
-                            "path": "workspace-assets/models/Qwen__Qwen3-0.6B",
+                            "path": None,
                             "exists": False,
                             "required": True,
+                            "satisfied": True,
                             "asset_provider": "huggingface",
                             "repo_id": "Qwen/Qwen3-0.6B",
                             "repo_type": "model",
+                            "resolution_mode": "remote-huggingface",
                         },
                         "dataset_path": {
-                            "path": "workspace-assets/datasets/karthiksagarn__astro_horoscope",
+                            "path": None,
                             "exists": False,
                             "required": True,
+                            "satisfied": True,
                             "asset_provider": "huggingface",
                             "repo_id": "karthiksagarn/astro_horoscope",
                             "repo_type": "dataset",
                             "dataset_split": "train",
+                            "resolution_mode": "remote-huggingface",
                         },
                     },
                 }
@@ -1261,9 +1412,10 @@ def test_collect_readiness_checks_marks_huggingface_assets_as_remediable(tmp_pat
     by_id = {item["id"]: item for item in checks}
     assert by_id["workspace-entry_script"]["category_hint"] == "asset"
     assert by_id["workspace-entry_script"]["template_path"].endswith("qwen3_0_6b_training_example.py")
-    assert by_id["workspace-model_path"]["category_hint"] == "asset"
+    assert by_id["remote-huggingface-endpoint"]["status"] == "ok"
+    assert by_id["workspace-model_path"]["status"] == "ok"
     assert by_id["workspace-model_path"]["asset_repo_id"] == "Qwen/Qwen3-0.6B"
-    assert by_id["workspace-dataset_path"]["category_hint"] == "asset"
+    assert by_id["workspace-dataset_path"]["status"] == "ok"
     assert by_id["workspace-dataset_path"]["dataset_split"] == "train"
 
 
@@ -2248,12 +2400,12 @@ def test_execute_env_fix_downloads_huggingface_assets(tmp_path: Path):
 
     (modules_dir / "huggingface_hub").mkdir(parents=True)
     (modules_dir / "huggingface_hub" / "__init__.py").write_text(
-        """import json\nimport os\nfrom pathlib import Path\n\ndef snapshot_download(repo_id, local_dir):\n    path = Path(local_dir)\n    path.mkdir(parents=True, exist_ok=True)\n    (path / 'config.json').write_text(json.dumps({'repo_id': repo_id, 'hf_endpoint': os.environ.get('HF_ENDPOINT')}), encoding='utf-8')\n    return str(path)\n""",
+        """import json\nimport os\nfrom pathlib import Path\n\ndef snapshot_download(repo_id, local_dir):\n    path = Path(local_dir)\n    path.mkdir(parents=True, exist_ok=True)\n    (path / 'config.json').write_text(json.dumps({'repo_id': repo_id, 'hf_endpoint': os.environ.get('HF_ENDPOINT'), 'hf_home': os.environ.get('HF_HOME')}), encoding='utf-8')\n    return str(path)\n""",
         encoding="utf-8",
     )
     (modules_dir / "datasets").mkdir(parents=True)
     (modules_dir / "datasets" / "__init__.py").write_text(
-        """import json\nimport os\nfrom pathlib import Path\n\nclass _Dataset:\n    def __init__(self, repo_id, split):\n        self.repo_id = repo_id\n        self.split = split\n\n    def save_to_disk(self, local_dir):\n        path = Path(local_dir)\n        path.mkdir(parents=True, exist_ok=True)\n        (path / 'dataset_info.json').write_text(json.dumps({'repo_id': self.repo_id, 'split': self.split, 'hf_endpoint': os.environ.get('HF_ENDPOINT')}), encoding='utf-8')\n\n\ndef load_dataset(repo_id, split=None):\n    return _Dataset(repo_id, split)\n""",
+        """import json\nimport os\nfrom pathlib import Path\n\nclass _Dataset:\n    def __init__(self, repo_id, split):\n        self.repo_id = repo_id\n        self.split = split\n\n    def save_to_disk(self, local_dir):\n        path = Path(local_dir)\n        path.mkdir(parents=True, exist_ok=True)\n        (path / 'dataset_info.json').write_text(json.dumps({'repo_id': self.repo_id, 'split': self.split, 'hf_endpoint': os.environ.get('HF_ENDPOINT'), 'hf_home': os.environ.get('HF_HOME')}), encoding='utf-8')\n\n\ndef load_dataset(repo_id, split=None):\n    return _Dataset(repo_id, split)\n""",
         encoding="utf-8",
     )
 
@@ -2309,6 +2461,8 @@ def test_execute_env_fix_downloads_huggingface_assets(tmp_path: Path):
         "--output-json",
         str(output_path),
         "--execute",
+        "--working-dir",
+        str(tmp_path),
         "--selected-env-root",
         str(env_root),
         "--confirm-asset-repair",
@@ -2320,6 +2474,8 @@ def test_execute_env_fix_downloads_huggingface_assets(tmp_path: Path):
     dataset_info = json.loads((dataset_dest / "dataset_info.json").read_text(encoding="utf-8"))
     assert model_info["hf_endpoint"] == "https://hf-mirror.com"
     assert dataset_info["hf_endpoint"] == "https://hf-mirror.com"
+    assert model_info["hf_home"] == str((tmp_path / "huggingface-cache").resolve())
+    assert dataset_info["hf_home"] == str((tmp_path / "huggingface-cache").resolve())
 
 
 def test_execute_env_fix_retains_package_level_framework_repair_in_dry_run(tmp_path: Path):
@@ -2534,6 +2690,130 @@ def test_build_readiness_report_uses_explicit_evidence_level_override(tmp_path: 
     assert envelope["status"] == "success"
     assert verdict["status"] == "READY"
     assert verdict["evidence_level"] == "task_smoke"
+
+
+def test_build_readiness_report_includes_remote_asset_guidance_and_revalidation_scope(tmp_path: Path):
+    target_path = tmp_path / "target.json"
+    normalized_path = tmp_path / "normalized.json"
+    checks_path = tmp_path / "checks.json"
+    closure_path = tmp_path / "closure.json"
+    fix_path = tmp_path / "fix.json"
+    report_json = tmp_path / "report.json"
+    report_md = tmp_path / "report.md"
+
+    target_path.write_text(
+        json.dumps(
+            {
+                "target_type": "training",
+                "entry_script": "train.py",
+                "framework_path": "pta",
+            }
+        ),
+        encoding="utf-8",
+    )
+    normalized_path.write_text(
+        json.dumps(
+            {
+                "blockers": [],
+                "warnings": [],
+                "blockers_detailed": [],
+                "warnings_detailed": [],
+            }
+        ),
+        encoding="utf-8",
+    )
+    checks_path.write_text(
+        json.dumps(
+            [
+                {
+                    "id": "framework-smoke-prerequisite",
+                    "status": "ok",
+                    "summary": "framework smoke prerequisite passed",
+                },
+                {
+                    "id": "remote-huggingface-endpoint",
+                    "status": "ok",
+                    "summary": "remote endpoint reachable",
+                },
+            ]
+        ),
+        encoding="utf-8",
+    )
+    closure_path.write_text(
+        json.dumps(
+            {
+                "working_dir": str(tmp_path),
+                "target_type": "training",
+                "layers": {
+                    "framework": {
+                        "framework_path": "pta",
+                    },
+                    "remote_assets": {
+                        "hf_endpoint": "https://hf-mirror.com",
+                        "hf_endpoint_source": "default",
+                        "endpoint_reachable": True,
+                        "cache_layout": {
+                            "source": "working_dir_default",
+                            "hf_home": str(tmp_path / "huggingface-cache"),
+                            "hub_cache": str(tmp_path / "huggingface-cache" / "hub"),
+                            "datasets_cache": str(tmp_path / "huggingface-cache" / "datasets"),
+                            "hub_cache_writable": True,
+                            "datasets_cache_writable": True,
+                        },
+                        "assets": {
+                            "model_path": {"repo_id": "Qwen/Qwen3-0.6B"},
+                            "dataset_path": {"repo_id": "karthiksagarn/astro_horoscope"},
+                        },
+                    },
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    fix_path.write_text(
+        json.dumps(
+            {
+                "execute": True,
+                "results": [
+                    {
+                        "action_id": "action-1",
+                        "status": "executed",
+                    }
+                ],
+                "executed_actions": ["action-1"],
+                "failed_actions": [],
+                "needs_revalidation": ["workspace-assets"],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    run_script(
+        "build_readiness_report.py",
+        "--target-json",
+        str(target_path),
+        "--normalized-json",
+        str(normalized_path),
+        "--checks-json",
+        str(checks_path),
+        "--closure-json",
+        str(closure_path),
+        "--fix-applied-json",
+        str(fix_path),
+        "--output-json",
+        str(report_json),
+        "--output-md",
+        str(report_md),
+    )
+    _, verdict = load_report_pair(report_json)
+    markdown = report_md.read_text(encoding="utf-8")
+
+    assert verdict["remote_asset_guidance"]["mode"] == "remote-assets"
+    assert verdict["remote_asset_guidance"]["hf_endpoint"] == "https://hf-mirror.com"
+    assert verdict["revalidated"] is True
+    assert verdict["revalidation_covered_scopes"] == ["framework", "workspace-assets"]
+    assert "## Remote Asset Guidance" in markdown
+    assert "huggingface-cache" in markdown
 
 
 def test_build_readiness_report_guides_against_system_python_when_workspace_env_missing(tmp_path: Path):

@@ -197,16 +197,23 @@ def plan_actions(blockers: List[dict], closure: dict, allow_network: bool, fix_s
                         reference_transformers_version=blocker.get("reference_transformers_version"),
                     )
                 )
+            elif asset_provider == "huggingface" and asset_kind in {"model_path", "checkpoint_path", "dataset_path"} and asset_repo_id and not asset_local_path:
+                skipped.append(
+                    {
+                        "blocker_id": blocker.get("id"),
+                        "reason": "remote Hugging Face assets resolve at runtime by default; no local prefetch destination was requested",
+                    }
+                )
             elif asset_provider == "huggingface" and asset_kind in {"model_path", "checkpoint_path"} and asset_repo_id and asset_local_path:
                 actions.append(
                     build_action(
                         f"action-{index}",
                         blocker,
                         "download_huggingface_model_asset",
-                        "Acquire the required model asset for the selected target.",
+                        "Optionally prefetch the required model asset into a local workspace path.",
                         True,
                         allow_network,
-                        "Model assets can be repaired only when network use is allowed and explicitly confirmed.",
+                        "Remote Hugging Face assets resolve at runtime by default. Local prefetch is optional and requires an explicit destination plus confirmed network use.",
                         revalidation_scope or ["workspace-assets", "task-smoke"],
                         asset_provider=asset_provider,
                         repo_id=asset_repo_id,
@@ -219,10 +226,10 @@ def plan_actions(blockers: List[dict], closure: dict, allow_network: bool, fix_s
                         f"action-{index}",
                         blocker,
                         "download_huggingface_dataset_asset",
-                        "Acquire the required dataset asset for the selected target.",
+                        "Optionally prefetch the required dataset asset into a local workspace path.",
                         True,
                         allow_network,
-                        "Dataset assets can be repaired only when network use is allowed and explicitly confirmed.",
+                        "Remote Hugging Face datasets resolve at runtime by default. Local prefetch is optional and requires an explicit destination plus confirmed network use.",
                         revalidation_scope or ["workspace-assets", "task-smoke"],
                         asset_provider=asset_provider,
                         repo_id=asset_repo_id,

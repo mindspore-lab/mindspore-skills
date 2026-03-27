@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import argparse
 import json
+import re
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
@@ -44,9 +45,7 @@ KNOWN_EXAMPLE_RECIPES = {
         "entry_script": f"{WORKSPACE_ASSET_ROOT}/examples/train_qwen3_0_6b.py",
         "template_path": str(EXAMPLES_DIR / "qwen3_0_6b_training_example.py"),
         "model_hub_id": "Qwen/Qwen3-0.6B",
-        "model_path": f"{WORKSPACE_ASSET_ROOT}/models/Qwen__Qwen3-0.6B",
         "dataset_hub_id": "karthiksagarn/astro_horoscope",
-        "dataset_path": f"{WORKSPACE_ASSET_ROOT}/datasets/karthiksagarn__astro_horoscope",
         "dataset_split": "train",
         "reference_transformers_version": "4.57.6",
         "runtime_profile": [
@@ -54,7 +53,7 @@ KNOWN_EXAMPLE_RECIPES = {
                 "import_name": "datasets",
                 "package_name": "datasets",
                 "required_for": "bundled-example",
-                "reason": "The bundled Qwen3-0.6B training example loads a Hugging Face dataset snapshot.",
+                "reason": "The bundled Qwen3-0.6B training example loads a Hugging Face dataset.",
             },
             {
                 "import_name": "transformers",
@@ -71,6 +70,15 @@ KNOWN_EXAMPLE_RECIPES = {
         ],
     }
 }
+
+DIRECT_FROM_PRETRAINED_RE = re.compile(r"from_pretrained\(\s*(['\"])(?P<repo>[^'\"]+)\1")
+DIRECT_LOAD_DATASET_RE = re.compile(r"load_dataset\(\s*(['\"])(?P<repo>[^'\"]+)\1")
+DIRECT_DATASET_SPLIT_RE = re.compile(r"load_dataset\([^)]*split\s*=\s*(['\"])(?P<split>[^'\"]+)\1")
+ASSIGNMENT_LITERAL_RE = re.compile(
+    r"(?m)^\s*(?P<name>[A-Za-z_][A-Za-z0-9_]*)\s*=\s*(['\"])(?P<value>[^'\"]+)\2\s*$"
+)
+VARIABLE_FROM_PRETRAINED_RE = re.compile(r"from_pretrained\(\s*(?P<name>[A-Za-z_][A-Za-z0-9_]*)\s*[,)]")
+VARIABLE_LOAD_DATASET_RE = re.compile(r"load_dataset\(\s*(?P<name>[A-Za-z_][A-Za-z0-9_]*)\s*[,)]")
 
 
 def read_text(path: Path) -> str:
@@ -119,6 +127,67 @@ def normalize_dataset_hub_id(value: Optional[str]) -> Optional[str]:
 def default_asset_path(kind: str, repo_id: str) -> str:
     safe = repo_id.replace("/", "__").replace("\\", "__").replace(":", "_").replace(" ", "_")
     return f"{WORKSPACE_ASSET_ROOT}/{kind}/{safe}"
+
+
+def looks_like_huggingface_repo_id(value: str) -> bool:
+    candidate = value.strip()
+    if not candidate or "/" not in candidate:
+        return False
+    if candidate.startswith((".", "/", "~")):
+        return False
+    if "\\" in candidate or " " in candidate:
+        return False
+    if re.match(r"^[A-Za-z]:", candidate):
+        return False
+    owner, repo = candidate.split("/", 1)
+    allowed = re.compile(r"^[A-Za-z0-9_.-]+$")
+    return bool(owner and repo and allowed.match(owner) and allowed.match(repo))
+
+
+def literal_assignments(text: str) -> Dict[str, str]:
+    mapping: Dict[str, str] = {}
+    for match in ASSIGNMENT_LITERAL_RE.finditer(text):
+        mapping[match.group("name")] = match.group("value").strip()
+    return mapping
+
+
+def extract_model_hub_id(text: str) -> Optional[str]:
+    direct = DIRECT_FROM_PRETRAINED_RE.search(text)
+    if direct:
+        repo = direct.group("repo").strip()
+        if looks_like_huggingface_repo_id(repo):
+            return normalize_model_hub_id(repo)
+
+    assignments = literal_assignments(text)
+    for match in VARIABLE_FROM_PRETRAINED_RE.finditer(text):
+        value = assignments.get(match.group("name"))
+        if value and looks_like_huggingface_repo_id(value):
+            return normalize_model_hub_id(value)
+    return None
+
+
+def extract_dataset_hub_id(text: str) -> Optional[str]:
+    direct = DIRECT_LOAD_DATASET_RE.search(text)
+    if direct:
+        repo = direct.group("repo").strip()
+        if looks_like_huggingface_repo_id(repo):
+            return normalize_dataset_hub_id(repo)
+
+    assignments = literal_assignments(text)
+    for match in VARIABLE_LOAD_DATASET_RE.finditer(text):
+        value = assignments.get(match.group("name"))
+        if value and looks_like_huggingface_repo_id(value):
+            return normalize_dataset_hub_id(value)
+    return None
+
+
+def extract_dataset_split(text: str) -> Optional[str]:
+    direct = DIRECT_DATASET_SPLIT_RE.search(text)
+    if direct:
+        split = direct.group("split").strip()
+        if split:
+            return split
+    return None
 
 
 def default_framework_path(
@@ -371,6 +440,21 @@ def build_execution_target(
         evidence.append("explicit entry_script input provided")
         script_text = read_text(chosen_script)
         local_framework = infer_framework(script_text)
+        if not model_hub_id:
+            extracted_model_hub_id = extract_model_hub_id(script_text)
+            if extracted_model_hub_id:
+                model_hub_id = extracted_model_hub_id
+                evidence.append("model_hub_id extracted from entry script")
+        if not dataset_hub_id:
+            extracted_dataset_hub_id = extract_dataset_hub_id(script_text)
+            if extracted_dataset_hub_id:
+                dataset_hub_id = extracted_dataset_hub_id
+                evidence.append("dataset_hub_id extracted from entry script")
+        if not dataset_split_hint:
+            extracted_dataset_split = extract_dataset_split(script_text)
+            if extracted_dataset_split:
+                dataset_split_hint = extracted_dataset_split
+                evidence.append("dataset_split extracted from entry script")
         discovered_target = discovered_target or score_script(chosen_script, root)[3]
     else:
         ranked: List[Tuple[int, Path, List[str], Optional[str], Optional[str]]] = []
@@ -386,6 +470,22 @@ def build_execution_target(
             local_framework = best[3]
             discovered_target = discovered_target or best[4]
             evidence.extend(best[2])
+            script_text = read_text(chosen_script)
+            if not model_hub_id:
+                extracted_model_hub_id = extract_model_hub_id(script_text)
+                if extracted_model_hub_id:
+                    model_hub_id = extracted_model_hub_id
+                    evidence.append("model_hub_id extracted from discovered entry script")
+            if not dataset_hub_id:
+                extracted_dataset_hub_id = extract_dataset_hub_id(script_text)
+                if extracted_dataset_hub_id:
+                    dataset_hub_id = extracted_dataset_hub_id
+                    evidence.append("dataset_hub_id extracted from discovered entry script")
+            if not dataset_split_hint:
+                extracted_dataset_split = extract_dataset_split(script_text)
+                if extracted_dataset_split:
+                    dataset_split_hint = extracted_dataset_split
+                    evidence.append("dataset_split extracted from discovered entry script")
             if len(ranked) > 1 and ranked[1][0] == best[0]:
                 evidence.append("multiple candidate scripts have equal evidence strength")
 
@@ -425,23 +525,11 @@ def build_execution_target(
         model_path = infer_model_path(markers, root, chosen_script)
         if model_path:
             evidence.append("model path inferred from workspace model markers")
-        elif recipe:
-            model_path = str(recipe["model_path"])
-            evidence.append("default local model path derived from the bundled training example")
-        elif model_hub_id:
-            model_path = default_asset_path("models", model_hub_id)
-            evidence.append("default local model path derived from model_hub_id")
 
     dataset_path = None
     if dataset_path_hint:
         dataset_path = str(dataset_path_hint)
         evidence.append("explicit dataset_path input provided")
-    elif recipe:
-        dataset_path = str(recipe["dataset_path"])
-        evidence.append("default local dataset path derived from the bundled training example")
-    elif dataset_hub_id:
-        dataset_path = default_asset_path("datasets", dataset_hub_id)
-        evidence.append("default local dataset path derived from dataset_hub_id")
 
     dataset_split = dataset_split_hint or (str(recipe["dataset_split"]) if recipe and recipe.get("dataset_split") else None)
     model_hub_id = model_hub_id or (str(recipe["model_hub_id"]) if recipe and recipe.get("model_hub_id") else None)

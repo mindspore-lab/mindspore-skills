@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
 import argparse
 import json
+import os
 import shutil
+import socket
 import subprocess
+from urllib.parse import urlparse
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
@@ -58,6 +61,8 @@ TRANSFORMERS_COMMON_RUNTIME_DEPENDENCIES = [
         "reason": "Complete Transformers engineering workflows commonly rely on Accelerate for loading, placement, and training orchestration.",
     },
 ]
+
+DEFAULT_HF_ENDPOINT = "https://hf-mirror.com"
 
 PROBE_CODE = """
 import importlib.util
@@ -194,6 +199,73 @@ def detect_output_path(target: dict, root: Path, entry_script: Optional[Path]) -
             if token in text:
                 return "./outputs"
     return None
+
+
+def normalize_hf_endpoint(value: Optional[str]) -> str:
+    endpoint = (value or DEFAULT_HF_ENDPOINT).strip()
+    if "://" not in endpoint:
+        endpoint = f"https://{endpoint}"
+    return endpoint.rstrip("/")
+
+
+def nearest_existing_parent(path: Path) -> Path:
+    current = path
+    while not current.exists() and current != current.parent:
+        current = current.parent
+    return current
+
+
+def path_is_writable(path: Path) -> bool:
+    candidate = path if path.exists() else nearest_existing_parent(path)
+    return os.access(candidate, os.W_OK)
+
+
+def resolve_hf_cache_layout(root: Path) -> dict:
+    hub_cache_env = os.environ.get("HUGGINGFACE_HUB_CACHE")
+    datasets_cache_env = os.environ.get("HF_DATASETS_CACHE")
+    hf_home_env = os.environ.get("HF_HOME")
+
+    if hub_cache_env or datasets_cache_env:
+        source = "explicit_cache_env"
+        hf_home = Path(hf_home_env).resolve() if hf_home_env else None
+        hub_cache = Path(hub_cache_env).resolve() if hub_cache_env else ((hf_home / "hub") if hf_home else (root / "huggingface-cache" / "hub"))
+        datasets_cache = (
+            Path(datasets_cache_env).resolve()
+            if datasets_cache_env
+            else ((hf_home / "datasets") if hf_home else (root / "huggingface-cache" / "datasets"))
+        )
+    elif hf_home_env:
+        source = "hf_home"
+        hf_home = Path(hf_home_env).resolve()
+        hub_cache = hf_home / "hub"
+        datasets_cache = hf_home / "datasets"
+    else:
+        source = "working_dir_default"
+        hf_home = (root / "huggingface-cache").resolve()
+        hub_cache = hf_home / "hub"
+        datasets_cache = hf_home / "datasets"
+
+    return {
+        "source": source,
+        "hf_home": str(hf_home) if hf_home else None,
+        "hub_cache": str(hub_cache),
+        "datasets_cache": str(datasets_cache),
+        "hub_cache_writable": path_is_writable(hub_cache),
+        "datasets_cache_writable": path_is_writable(datasets_cache),
+    }
+
+
+def probe_hf_endpoint(endpoint: str) -> Tuple[bool, Optional[str]]:
+    parsed = urlparse(endpoint)
+    host = parsed.hostname
+    if not host:
+        return False, "HF endpoint is missing a host"
+    port = parsed.port or (443 if parsed.scheme == "https" else 80)
+    try:
+        with socket.create_connection((host, port), timeout=5):
+            return True, None
+    except OSError as exc:
+        return False, str(exc)
 def run_json_probe_with_python(
     python_path: Path,
     mode: str,
@@ -416,13 +488,66 @@ def build_runtime_layer(
     }
 
 
-def build_workspace_layer(target: dict, root: Path, target_type: str, entry_script: Optional[Path]) -> dict:
+def build_remote_asset_layer(target: dict, root: Path, target_type: str) -> dict:
+    cache_layout = resolve_hf_cache_layout(root)
+    hf_endpoint = normalize_hf_endpoint(os.environ.get("HF_ENDPOINT"))
+    assets: Dict[str, dict] = {}
+    if target.get("model_hub_id"):
+        assets["model_path"] = {
+            "repo_id": target.get("model_hub_id"),
+            "repo_type": "model",
+        }
+    if target_type == "training" and target.get("dataset_hub_id"):
+        assets["dataset_path"] = {
+            "repo_id": target.get("dataset_hub_id"),
+            "repo_type": "dataset",
+            "dataset_split": target.get("dataset_split"),
+        }
+
+    endpoint_reachable = None
+    endpoint_error = None
+    if assets:
+        endpoint_reachable, endpoint_error = probe_hf_endpoint(hf_endpoint)
+        if "model_path" in assets:
+            assets["model_path"]["cache_path"] = cache_layout["hub_cache"]
+            assets["model_path"]["ready"] = bool(
+                endpoint_reachable and cache_layout.get("hub_cache_writable")
+            )
+        if "dataset_path" in assets:
+            assets["dataset_path"]["cache_path"] = cache_layout["datasets_cache"]
+            assets["dataset_path"]["ready"] = bool(
+                endpoint_reachable and cache_layout.get("datasets_cache_writable")
+            )
+
+    return {
+        "hf_endpoint": hf_endpoint,
+        "hf_endpoint_source": "env" if os.environ.get("HF_ENDPOINT") else "default",
+        "cache_layout": cache_layout,
+        "endpoint_reachable": endpoint_reachable,
+        "endpoint_error": endpoint_error,
+        "assets": assets,
+    }
+
+
+def build_workspace_layer(
+    target: dict,
+    root: Path,
+    target_type: str,
+    entry_script: Optional[Path],
+    remote_assets_layer: dict,
+) -> dict:
     def file_state(value: Optional[str]) -> dict:
         if not value:
-            return {"path": None, "exists": False, "required": False}
+            return {"path": None, "exists": False, "required": False, "satisfied": False}
         path = Path(value)
         path = path if path.is_absolute() else (root / path)
-        return {"path": str(path.relative_to(root) if path.exists() or path.is_relative_to(root) else path), "exists": path.exists(), "required": True}
+        exists = path.exists()
+        return {
+            "path": str(path.relative_to(root) if exists or path.is_relative_to(root) else path),
+            "exists": exists,
+            "required": True,
+            "satisfied": exists,
+        }
 
     entry_state = file_state(target.get("entry_script"))
     config_state = file_state(target.get("config_path"))
@@ -436,6 +561,12 @@ def build_workspace_layer(target: dict, root: Path, target_type: str, entry_scri
 
     dataset_state["required"] = target_type == "training"
     model_state["required"] = True
+    entry_state["satisfied"] = entry_state["exists"] or not entry_state["required"]
+    config_state["satisfied"] = config_state["exists"] or not config_state["required"]
+    model_state["satisfied"] = model_state["exists"] or not model_state["required"]
+    dataset_state["satisfied"] = dataset_state["exists"] or not dataset_state["required"]
+    checkpoint_state["satisfied"] = checkpoint_state["exists"] or not checkpoint_state["required"]
+    output_state["satisfied"] = output_state["exists"] or not output_state["required"]
     if target.get("example_recipe_id"):
         entry_state["source"] = "bundled-example"
         entry_state["template_path"] = target.get("example_template_path")
@@ -446,12 +577,18 @@ def build_workspace_layer(target: dict, root: Path, target_type: str, entry_scri
         model_state["asset_provider"] = "huggingface"
         model_state["repo_id"] = target.get("model_hub_id")
         model_state["repo_type"] = "model"
+        if not target.get("model_path"):
+            model_state["resolution_mode"] = "remote-huggingface"
+            model_state["satisfied"] = "model_path" in (remote_assets_layer.get("assets") or {})
     if target.get("dataset_hub_id"):
         dataset_state["source"] = "huggingface"
         dataset_state["asset_provider"] = "huggingface"
         dataset_state["repo_id"] = target.get("dataset_hub_id")
         dataset_state["repo_type"] = "dataset"
         dataset_state["dataset_split"] = target.get("dataset_split")
+        if not target.get("dataset_path"):
+            dataset_state["resolution_mode"] = "remote-huggingface"
+            dataset_state["satisfied"] = "dataset_path" in (remote_assets_layer.get("assets") or {})
 
     return {
         "entry_script": entry_state,
@@ -500,26 +637,29 @@ def build_dependency_closure(target: dict, root: Path) -> dict:
     system_layer["probe_env_source"] = probe_env_source
     system_layer["probe_env_error"] = probe_env_error
     python_layer = build_python_layer(target, root, system_layer)
+    framework_layer = build_framework_layer(target, python_layer, probe_env)
+    remote_assets_layer = build_remote_asset_layer(target, root, target_type)
     layers = {
         "system": system_layer,
         "python_environment": python_layer,
-        "framework": build_framework_layer(target, python_layer, probe_env),
+        "framework": framework_layer,
         "runtime_dependencies": build_runtime_layer(
             target,
             entry_script,
-            target.get("framework_path") or "unknown",
+            framework_layer.get("framework_path") or "unknown",
             system_layer,
             python_layer,
             probe_env,
         ),
-        "workspace_assets": build_workspace_layer(target, root, target_type, entry_script),
+        "remote_assets": remote_assets_layer,
+        "workspace_assets": build_workspace_layer(target, root, target_type, entry_script, remote_assets_layer),
         "task_execution": build_task_layer(target),
     }
 
     missing_required = []
     workspace_assets = layers["workspace_assets"]
     for key, item in workspace_assets.items():
-        if item["required"] and not item["exists"]:
+        if item["required"] and not item.get("satisfied", item.get("exists", False)):
             missing_required.append(key)
 
     return {

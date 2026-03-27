@@ -112,6 +112,7 @@ def collect_checks(target: dict, closure: dict) -> List[dict]:
     runtime_layer = closure.get("layers", {}).get("runtime_dependencies", {})
     system = closure.get("layers", {}).get("system", {})
     python_env = closure.get("layers", {}).get("python_environment", {})
+    remote_assets = closure.get("layers", {}).get("remote_assets", {})
     workspace = closure.get("layers", {}).get("workspace_assets", {})
     selected_env_root = python_env.get("selected_env_root")
     selected_python = python_env.get("selected_python")
@@ -490,13 +491,119 @@ def collect_checks(target: dict, closure: dict) -> List[dict]:
             )
         )
 
+    remote_asset_states = remote_assets.get("assets") or {}
+    if remote_asset_states:
+        cache_layout = remote_assets.get("cache_layout") or {}
+        endpoint = remote_assets.get("hf_endpoint")
+        endpoint_source = remote_assets.get("hf_endpoint_source")
+        endpoint_reachable = remote_assets.get("endpoint_reachable")
+        endpoint_error = remote_assets.get("endpoint_error")
+        endpoint_evidence = []
+        if endpoint:
+            endpoint_evidence.append(f"HF_ENDPOINT={endpoint}")
+        if endpoint_source:
+            endpoint_evidence.append(f"hf_endpoint_source={endpoint_source}")
+        if endpoint_error:
+            endpoint_evidence.append(f"endpoint_error={endpoint_error}")
+        if endpoint_reachable:
+            checks.append(
+                make_check(
+                    "remote-huggingface-endpoint",
+                    "ok",
+                    "Hugging Face mirror endpoint is reachable for remote asset resolution.",
+                    evidence=endpoint_evidence or ["remote asset endpoint is reachable"],
+                )
+            )
+        else:
+            checks.append(
+                make_check(
+                    "remote-huggingface-endpoint",
+                    "block",
+                    "Hugging Face mirror endpoint is unavailable for remote asset resolution.",
+                    category_hint="env",
+                    severity="high",
+                    remediable=False,
+                    remediation_owner="manual-network",
+                    revalidation_scope=["workspace-assets", "task-smoke"],
+                    evidence=endpoint_evidence or ["remote asset endpoint is unreachable"],
+                )
+            )
+
+        if "model_path" in remote_asset_states:
+            hub_cache = cache_layout.get("hub_cache")
+            hub_cache_writable = bool(cache_layout.get("hub_cache_writable"))
+            evidence = []
+            if hub_cache:
+                evidence.append(f"hub_cache={hub_cache}")
+            if cache_layout.get("source"):
+                evidence.append(f"cache_source={cache_layout.get('source')}")
+            if hub_cache_writable:
+                checks.append(
+                    make_check(
+                        "remote-huggingface-model-cache",
+                        "ok",
+                        "Model cache location is writable for remote Hugging Face resolution.",
+                        evidence=evidence or ["model cache is writable"],
+                    )
+                )
+            else:
+                checks.append(
+                    make_check(
+                        "remote-huggingface-model-cache",
+                        "block",
+                        "Model cache location is not writable for remote Hugging Face resolution.",
+                        category_hint="env",
+                        severity="high",
+                        remediable=False,
+                        remediation_owner="manual-workspace",
+                        revalidation_scope=["workspace-assets", "task-smoke"],
+                        evidence=evidence or ["model cache is not writable"],
+                    )
+                )
+
+        if "dataset_path" in remote_asset_states:
+            datasets_cache = cache_layout.get("datasets_cache")
+            datasets_cache_writable = bool(cache_layout.get("datasets_cache_writable"))
+            evidence = []
+            if datasets_cache:
+                evidence.append(f"datasets_cache={datasets_cache}")
+            if cache_layout.get("source"):
+                evidence.append(f"cache_source={cache_layout.get('source')}")
+            if datasets_cache_writable:
+                checks.append(
+                    make_check(
+                        "remote-huggingface-dataset-cache",
+                        "ok",
+                        "Dataset cache location is writable for remote Hugging Face resolution.",
+                        evidence=evidence or ["dataset cache is writable"],
+                    )
+                )
+            else:
+                checks.append(
+                    make_check(
+                        "remote-huggingface-dataset-cache",
+                        "block",
+                        "Dataset cache location is not writable for remote Hugging Face resolution.",
+                        category_hint="env",
+                        severity="high",
+                        remediable=False,
+                        remediation_owner="manual-workspace",
+                        revalidation_scope=["workspace-assets", "task-smoke"],
+                        evidence=evidence or ["dataset cache is not writable"],
+                    )
+                )
+
     for key in ("entry_script", "model_path", "dataset_path", "checkpoint_path", "output_path"):
         asset = workspace.get(key, {})
         if not asset:
             continue
         required = asset.get("required", False)
         exists = asset.get("exists", False)
-        if required and not exists:
+        satisfied = asset.get("satisfied", exists)
+        resolution_mode = asset.get("resolution_mode")
+        if required and not satisfied:
+            if resolution_mode == "remote-huggingface":
+                continue
             if key == "entry_script" and asset.get("source") == "bundled-example" and asset.get("template_path"):
                 evidence = [f"{key} missing", f"template_path={asset.get('template_path')}"]
                 if asset.get("example_recipe_id"):
@@ -585,15 +692,36 @@ def collect_checks(target: dict, closure: dict) -> List[dict]:
                         **asset_check_fields(asset, key),
                     )
                 )
-        elif required and exists:
-            checks.append(
-                make_check(
-                    f"workspace-{key}",
-                    "ok",
-                    f"Required asset {key} is present.",
-                    evidence=[f"{key} exists"],
+        elif required:
+            if exists:
+                checks.append(
+                    make_check(
+                        f"workspace-{key}",
+                        "ok",
+                        f"Required asset {key} is present.",
+                        evidence=[f"{key} exists"],
+                    )
                 )
-            )
+            elif resolution_mode == "remote-huggingface":
+                remote_asset = remote_asset_states.get(key, {})
+                evidence = [f"resolution_mode={resolution_mode}"]
+                if asset.get("repo_id"):
+                    evidence.append(f"repo_id={asset.get('repo_id')}")
+                if remote_assets.get("hf_endpoint"):
+                    evidence.append(f"HF_ENDPOINT={remote_assets.get('hf_endpoint')}")
+                if remote_asset.get("cache_path"):
+                    evidence.append(f"cache_path={remote_asset.get('cache_path')}")
+                if key == "dataset_path" and asset.get("dataset_split"):
+                    evidence.append(f"dataset_split={asset.get('dataset_split')}")
+                checks.append(
+                    make_check(
+                        f"workspace-{key}",
+                        "ok",
+                        f"Required asset {key} will resolve remotely from Hugging Face at runtime.",
+                        evidence=evidence,
+                        **asset_check_fields(asset, key),
+                    )
+                )
 
     return checks
 

@@ -112,8 +112,15 @@ Do not use this skill for:
   workspace-local environment. If the selected environment is unresolved,
   block or repair the environment first.
 - Do not mutate existing model, dataset, checkpoint, or config files in place.
-- You may materialize missing target-scoped example scripts, model snapshots,
-  or dataset snapshots inside the workspace when the workflow permits it.
+- When `model_hub_id` or `dataset_hub_id` is known, treat remote Hugging Face
+  resolution as the default asset mode instead of requiring a predownloaded
+  workspace snapshot.
+- Respect existing `HUGGINGFACE_HUB_CACHE`, `HF_DATASETS_CACHE`, or `HF_HOME`
+  settings when present. If none are set, default Hugging Face cache storage
+  to `<working_dir>/huggingface-cache`.
+- You may materialize missing target-scoped example scripts, or optionally
+  prefetch model or dataset assets into workspace-local paths when the
+  workflow explicitly chooses local prefetch.
 - After every successful mutation, rerun affected checks before final status.
 - You may write readiness artifacts under the workspace output directory.
 - Resolve one selected workspace Python before running the rest of the helper

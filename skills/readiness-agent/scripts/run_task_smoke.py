@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import argparse
 import json
+import os
 import shlex
 import subprocess
 from pathlib import Path
@@ -83,12 +84,37 @@ def resolve_probe_python(closure: dict) -> Tuple[Optional[str], Optional[str]]:
     return python_env.get("probe_python_path"), python_env.get("selection_reason")
 
 
+def apply_remote_asset_env(base_env: Optional[Dict[str, str]], closure: dict, root: Path) -> Tuple[Optional[Dict[str, str]], Optional[str]]:
+    remote_assets = closure.get("layers", {}).get("remote_assets", {})
+    if not (remote_assets.get("assets") or {}):
+        return base_env, None
+
+    env = dict(base_env or os.environ)
+    evidence: List[str] = []
+    hf_endpoint = remote_assets.get("hf_endpoint")
+    if hf_endpoint:
+        env["HF_ENDPOINT"] = str(hf_endpoint)
+        evidence.append(f"HF_ENDPOINT={hf_endpoint}")
+
+    cache_layout = remote_assets.get("cache_layout") or {}
+    if not env.get("HUGGINGFACE_HUB_CACHE") and not env.get("HF_DATASETS_CACHE") and not env.get("HF_HOME"):
+        hf_home = cache_layout.get("hf_home") or str((root / "huggingface-cache").resolve())
+        env["HF_HOME"] = hf_home
+        evidence.append(f"HF_HOME={hf_home}")
+
+    return env, ", ".join(evidence) if evidence else None
+
+
 def resolve_probe_environment(closure: dict) -> Tuple[Optional[Dict[str, str]], Optional[str]]:
     system_layer = closure.get("layers", {}).get("system", {})
     env, source, error = resolve_runtime_environment(system_layer)
     evidence = source
     if error:
         evidence = f"{source}: {error}"
+    root = Path(closure.get("working_dir") or ".").resolve()
+    env, remote_evidence = apply_remote_asset_env(env, closure, root)
+    if remote_evidence:
+        evidence = f"{evidence}; {remote_evidence}" if evidence else remote_evidence
     return env, evidence
 
 

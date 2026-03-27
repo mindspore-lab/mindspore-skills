@@ -1,23 +1,21 @@
+import os
 from pathlib import Path
 
-from datasets import DatasetDict, load_from_disk
+WORKSPACE = Path(__file__).resolve().parents[2]
+os.environ.setdefault("HF_ENDPOINT", "https://hf-mirror.com")
+if not any(os.environ.get(name) for name in ("HUGGINGFACE_HUB_CACHE", "HF_DATASETS_CACHE", "HF_HOME")):
+    os.environ["HF_HOME"] = str(WORKSPACE / "huggingface-cache")
+
+from datasets import load_dataset
 from transformers import AutoModelForCausalLM, AutoTokenizer, DataCollatorForLanguageModeling
 from transformers import Trainer, TrainingArguments
 
+MODEL_REPO_ID = "Qwen/Qwen3-0.6B"
+DATASET_REPO_ID = "karthiksagarn/astro_horoscope"
+DATASET_SPLIT = "train"
 
-# This bundled example consumes the local model and dataset snapshots that
-# readiness-agent materializes into the workspace during asset repair.
-WORKSPACE = Path(__file__).resolve().parents[2]
-ASSET_ROOT = WORKSPACE / "workspace-assets"
-MODEL_PATH = ASSET_ROOT / "models" / "Qwen__Qwen3-0.6B"
-DATASET_PATH = ASSET_ROOT / "datasets" / "karthiksagarn__astro_horoscope"
-
-tokenizer = AutoTokenizer.from_pretrained(str(MODEL_PATH))
-dataset = load_from_disk(str(DATASET_PATH))
-if isinstance(dataset, DatasetDict):
-    train_source = dataset["train"]
-else:
-    train_source = dataset
+tokenizer = AutoTokenizer.from_pretrained(MODEL_REPO_ID)
+train_source = load_dataset(DATASET_REPO_ID, split=DATASET_SPLIT)
 
 
 def tokenize(batch):
@@ -31,7 +29,7 @@ def tokenize(batch):
 tokenized = train_source.map(tokenize, batched=True, remove_columns=train_source.column_names)
 tokenized = tokenized.train_test_split(test_size=0.1)
 
-model = AutoModelForCausalLM.from_pretrained(str(MODEL_PATH), torch_dtype="auto")
+model = AutoModelForCausalLM.from_pretrained(MODEL_REPO_ID, dtype="auto")
 model = model.to("npu")
 
 training_args = TrainingArguments(

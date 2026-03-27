@@ -129,6 +129,9 @@ The internal result should contain at minimum:
 - normalized view of prerequisites required by the selected target
 - the final report should preserve the resolved closure used for certification,
   not an empty placeholder
+- remote asset resolution may satisfy model or dataset requirements without a
+  workspace-local snapshot when repo IDs, mirror configuration, network
+  reachability, and cache writability are all established
 
 `checks`
 - structured per-check results
@@ -175,7 +178,8 @@ Emit `READY` only when:
 
 - no hard blocker remains
 - the final interpreted target is stable enough
-- required assets for the target are present
+- required assets for the target are either present locally or remotely
+  resolvable through the configured Hugging Face mirror and cache layout
 - the selected framework path is healthy
 - permissions and storage are sufficient
 - the internal evidence threshold for `READY` is met

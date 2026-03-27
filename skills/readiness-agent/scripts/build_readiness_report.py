@@ -65,6 +65,8 @@ def scopes_for_check(check_id: str) -> Set[str]:
         return {"framework"}
     if check_id == "runtime-importability":
         return {"runtime-dependencies"}
+    if check_id.startswith("remote-huggingface-"):
+        return {"workspace-assets"}
     if check_id == "target-stability":
         return {"target"}
     if check_id.startswith("workspace-"):
@@ -139,9 +141,9 @@ def synthesize_user_result(
             summary = f"{target_type.capitalize()} is blocked because manual workspace inputs are still missing."
         elif has_auto_remediable:
             next_action = (
-                "Repair the selected workspace environment or missing target-scoped assets in fix/auto mode, then rerun readiness."
+                "Repair the selected workspace environment or other remediable target-scoped inputs in fix/auto mode, then rerun readiness."
             )
-            summary = f"{target_type.capitalize()} is blocked because target-scoped environment or asset remediation is still required."
+            summary = f"{target_type.capitalize()} is blocked because remediable target-scoped environment or input issues still remain."
         elif has_unknown:
             next_action = "Inspect unresolved blockers, confirm the intended target, and rerun readiness."
             summary = f"{target_type.capitalize()} is blocked because one or more readiness blockers remain unresolved."
@@ -253,6 +255,7 @@ def build_report(
         "revalidation_required_scopes": revalidation_required,
         "revalidation_covered_scopes": revalidation_covered,
         "selected_environment_guidance": build_selected_environment_guidance(target, dependency_closure),
+        "remote_asset_guidance": build_remote_asset_guidance(dependency_closure),
     }
 
 
@@ -283,6 +286,32 @@ def build_selected_environment_guidance(target: dict, dependency_closure: dict) 
             "Create or select a workspace-local environment first."
         )
     return guidance
+
+
+def build_remote_asset_guidance(dependency_closure: dict) -> Optional[dict]:
+    remote_assets = dependency_closure.get("layers", {}).get("remote_assets", {})
+    assets = remote_assets.get("assets") or {}
+    if not assets:
+        return None
+
+    cache_layout = remote_assets.get("cache_layout") or {}
+    return {
+        "mode": "remote-assets",
+        "asset_kinds": sorted(assets.keys()),
+        "hf_endpoint": remote_assets.get("hf_endpoint"),
+        "hf_endpoint_source": remote_assets.get("hf_endpoint_source"),
+        "endpoint_reachable": remote_assets.get("endpoint_reachable"),
+        "cache_source": cache_layout.get("source"),
+        "hf_home": cache_layout.get("hf_home"),
+        "hub_cache": cache_layout.get("hub_cache"),
+        "datasets_cache": cache_layout.get("datasets_cache"),
+        "hub_cache_writable": cache_layout.get("hub_cache_writable"),
+        "datasets_cache_writable": cache_layout.get("datasets_cache_writable"),
+        "notes": [
+            "Remote Hugging Face assets resolve at runtime by default when repo IDs are known.",
+            "Existing HUGGINGFACE_HUB_CACHE, HF_DATASETS_CACHE, or HF_HOME settings take precedence over the working-directory default cache.",
+        ],
+    }
 
 
 def now_utc_iso() -> str:
@@ -398,6 +427,28 @@ def render_markdown(report: dict) -> str:
     if guidance.get("message"):
         lines.append(f"- message: {guidance['message']}")
     lines.append("")
+    remote_guidance = report.get("remote_asset_guidance") or {}
+    if remote_guidance:
+        lines.extend(["## Remote Asset Guidance", ""])
+        lines.append(f"- mode: `{remote_guidance.get('mode')}`")
+        if remote_guidance.get("asset_kinds"):
+            lines.append(f"- asset_kinds: `{', '.join(remote_guidance['asset_kinds'])}`")
+        if remote_guidance.get("hf_endpoint"):
+            lines.append(f"- hf_endpoint: `{remote_guidance['hf_endpoint']}`")
+        if remote_guidance.get("hf_endpoint_source"):
+            lines.append(f"- hf_endpoint_source: `{remote_guidance['hf_endpoint_source']}`")
+        if remote_guidance.get("cache_source"):
+            lines.append(f"- cache_source: `{remote_guidance['cache_source']}`")
+        if remote_guidance.get("hf_home"):
+            lines.append(f"- hf_home: `{remote_guidance['hf_home']}`")
+        if remote_guidance.get("hub_cache"):
+            lines.append(f"- hub_cache: `{remote_guidance['hub_cache']}`")
+        if remote_guidance.get("datasets_cache"):
+            lines.append(f"- datasets_cache: `{remote_guidance['datasets_cache']}`")
+        if remote_guidance.get("notes"):
+            for note in remote_guidance["notes"]:
+                lines.append(f"- note: {note}")
+        lines.append("")
     return "\n".join(lines).rstrip() + "\n"
 
 

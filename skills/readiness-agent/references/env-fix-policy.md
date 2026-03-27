@@ -64,12 +64,21 @@ The MVP `env-fix` policy allows these action families:
 - install or replace framework packages inside the selected environment
 - scaffold a bundled example entry script when explicit target evidence
   justifies it
-- download a model or required asset only when network use is allowed and the
-  action is confirmed
-- download a required dataset asset only when network use is allowed and the
-  action is confirmed
+- optionally prefetch a model or required asset into a workspace-local path
+  only when network use is allowed, the action is confirmed, and an explicit
+  local destination is justified
+- optionally prefetch a required dataset asset into a workspace-local path
+  only when network use is allowed, the action is confirmed, and an explicit
+  local destination is justified
 
 These actions must remain target-scoped and closure-justified.
+
+Important default:
+
+- known Hugging Face model or dataset repo IDs should resolve through remote
+  assets at runtime by default
+- native `env-fix` does not need to predownload those assets unless the
+  workflow explicitly chooses local prefetch
 
 ## Forbidden Remediation Actions
 
