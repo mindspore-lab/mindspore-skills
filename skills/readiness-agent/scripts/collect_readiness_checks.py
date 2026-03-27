@@ -684,7 +684,7 @@ def collect_checks(target: dict, closure: dict) -> List[dict]:
                     )
                 )
 
-    for key in ("entry_script", "model_path", "dataset_path", "checkpoint_path", "output_path"):
+    for key in ("entry_script", "model_path", "dataset_path", "checkpoint_path"):
         asset = workspace.get(key, {})
         if not asset:
             continue

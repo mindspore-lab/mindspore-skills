@@ -169,11 +169,16 @@ def test_run_readiness_pipeline_check_does_not_create_workspace_env(tmp_path: Pa
 
     _, verdict = load_report_pair(output_dir / "report.json")
     fix_applied = json.loads((output_dir / "meta" / "fix-applied.json").read_text(encoding="utf-8"))
+    readiness_env = (workspace / ".readiness.env").read_text(encoding="utf-8")
 
     assert verdict["status"] == "BLOCKED"
     assert fix_applied["execute"] is False
     assert fix_applied["executed_actions"] == []
     assert not (workspace / ".venv").exists()
+    assert "export READINESS_WORKING_DIR=" in readiness_env
+    assert str(workspace.resolve()) in readiness_env
+    assert "export HF_ENDPOINT=" in readiness_env
+    assert "export HF_HOME=" in readiness_env
 
 
 def test_run_readiness_pipeline_tolerates_missing_and_unknown_cli_args(tmp_path: Path):
@@ -321,6 +326,7 @@ def test_run_readiness_pipeline_auto_creates_default_env_and_reruns(tmp_path: Pa
     checks = json.loads((output_dir / "meta" / "checks.json").read_text(encoding="utf-8"))
     fix_applied = json.loads((output_dir / "meta" / "fix-applied.json").read_text(encoding="utf-8"))
     selected_python = json.loads((output_dir / "meta" / "selected-python.json").read_text(encoding="utf-8"))
+    readiness_env = (workspace / ".readiness.env").read_text(encoding="utf-8")
     by_id = {item["id"]: item for item in checks}
 
     assert env_json["pipeline_passes"] == 2
@@ -330,3 +336,27 @@ def test_run_readiness_pipeline_auto_creates_default_env_and_reruns(tmp_path: Pa
     assert selected_python["selection_status"] == "selected"
     assert str(workspace / ".venv") in str(selected_python["selected_env_root"])
     assert by_id["python-selected-python"]["status"] == "ok"
+    assert "export READINESS_SELECTED_ENV_ROOT=" in readiness_env
+    assert "export READINESS_SELECTED_PYTHON=" in readiness_env
+    assert str((workspace / ".venv").resolve()) in readiness_env
+
+
+def test_run_readiness_pipeline_rejects_removed_auto_mode(tmp_path: Path):
+    workspace = make_workspace(tmp_path)
+
+    completed = subprocess.run(
+        [
+            sys.executable,
+            str(SCRIPTS / "run_readiness_pipeline.py"),
+            "--auto",
+        ],
+        cwd=str(workspace),
+        text=True,
+        capture_output=True,
+    )
+
+    assert completed.returncode == 2
+    assert completed.stdout == ""
+    assert json.loads(completed.stderr) == {
+        "error": "auto mode was removed; use --fix for readiness remediation."
+    }

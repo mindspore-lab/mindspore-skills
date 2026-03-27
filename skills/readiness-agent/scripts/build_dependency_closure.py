@@ -3,9 +3,9 @@ import argparse
 import json
 import os
 import shutil
-import socket
 import subprocess
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse
+from urllib.request import Request, urlopen
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
@@ -218,17 +218,6 @@ def ascend_hidden_runtime_profile(framework_path: str, system_layer: dict) -> Li
     ]
 
 
-def detect_output_path(target: dict, root: Path, entry_script: Optional[Path]) -> Optional[str]:
-    if target.get("output_path"):
-        return str(target["output_path"])
-    if entry_script:
-        text = read_text(entry_script)
-        for token in ("output_dir", "save_dir", "ckpt_dir"):
-            if token in text:
-                return "./outputs"
-    return None
-
-
 def normalize_hf_endpoint(value: Optional[str]) -> str:
     endpoint = (value or DEFAULT_HF_ENDPOINT).strip()
     if "://" not in endpoint:
@@ -285,15 +274,23 @@ def resolve_hf_cache_layout(root: Path) -> dict:
 
 def probe_hf_endpoint(endpoint: str) -> Tuple[bool, Optional[str]]:
     parsed = urlparse(endpoint)
-    host = parsed.hostname
-    if not host:
+    if not parsed.scheme or not parsed.netloc:
         return False, "HF endpoint is missing a host"
-    port = parsed.port or (443 if parsed.scheme == "https" else 80)
+
+    probe_urls = [
+        endpoint,
+        urljoin(endpoint + "/", "api/models/Qwen/Qwen3-0.6B"),
+    ]
     try:
-        with socket.create_connection((host, port), timeout=5):
-            return True, None
-    except OSError as exc:
+        for probe_url in probe_urls:
+            request = Request(probe_url, method="HEAD", headers={"User-Agent": "readiness-agent/0.1"})
+            with urlopen(request, timeout=5) as response:
+                status = getattr(response, "status", None) or response.getcode()
+                if status and int(status) < 500:
+                    return True, None
+    except Exception as exc:
         return False, str(exc)
+    return False, "HF endpoint probe did not return a successful HTTP response"
 def run_json_probe_with_python(
     python_path: Path,
     mode: str,
@@ -653,10 +650,6 @@ def build_workspace_layer(
     model_state = file_state(target.get("model_path"))
     dataset_state = file_state(target.get("dataset_path"))
     checkpoint_state = file_state(target.get("checkpoint_path"))
-    output_path = detect_output_path(target, root, entry_script)
-    output_state = file_state(output_path)
-    if output_path:
-        output_state["required"] = target_type == "training"
 
     dataset_state["required"] = target_type == "training"
     model_state["required"] = True
@@ -665,7 +658,6 @@ def build_workspace_layer(
     model_state["satisfied"] = model_state["exists"] or not model_state["required"]
     dataset_state["satisfied"] = dataset_state["exists"] or not dataset_state["required"]
     checkpoint_state["satisfied"] = checkpoint_state["exists"] or not checkpoint_state["required"]
-    output_state["satisfied"] = output_state["exists"] or not output_state["required"]
     if target.get("example_recipe_id"):
         entry_state["source"] = "bundled-example"
         entry_state["template_path"] = target.get("example_template_path")
@@ -695,7 +687,6 @@ def build_workspace_layer(
         "model_path": model_state,
         "dataset_path": dataset_state,
         "checkpoint_path": checkpoint_state,
-        "output_path": output_state,
     }
 
 

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import argparse
 import json
+import shlex
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import List, Optional, Set, Tuple
@@ -263,13 +264,23 @@ def build_selected_environment_guidance(target: dict, dependency_closure: dict) 
     python_env = dependency_closure.get("layers", {}).get("python_environment", {})
     selected_env_root = python_env.get("selected_env_root")
     probe_python_path = python_env.get("probe_python_path")
+    working_dir = target.get("working_dir") or dependency_closure.get("working_dir")
+    readiness_env_path = str((Path(working_dir).resolve() / ".readiness.env")) if working_dir else None
     guidance = {
         "selected_env_root": selected_env_root,
         "selected_python": probe_python_path,
         "system_python_allowed": False,
+        "readiness_env_path": readiness_env_path,
     }
+    if readiness_env_path:
+        guidance["source_command"] = f"source {shlex.quote(readiness_env_path)}"
     if probe_python_path:
         guidance["verification_command"] = f"{probe_python_path} <script.py>"
+        if readiness_env_path:
+            guidance["run_command"] = (
+                f"source {shlex.quote(readiness_env_path)} && "
+                f"{shlex.quote(probe_python_path)} <script.py>"
+            )
         guidance["install_command"] = (
             f"uv pip install --python {probe_python_path} --index-url "
             f"{DEFAULT_PIP_INDEX_URL} <package>"
@@ -414,10 +425,16 @@ def render_markdown(report: dict) -> str:
     guidance = report.get("selected_environment_guidance") or {}
     lines.extend(["## Environment Guidance", ""])
     lines.append("- system_python_allowed: `false`")
+    if guidance.get("readiness_env_path"):
+        lines.append(f"- readiness_env_path: `{guidance['readiness_env_path']}`")
+    if guidance.get("source_command"):
+        lines.append(f"- source_command: `{guidance['source_command']}`")
     if guidance.get("selected_env_root"):
         lines.append(f"- selected_env_root: `{guidance['selected_env_root']}`")
     if guidance.get("selected_python"):
         lines.append(f"- selected_python: `{guidance['selected_python']}`")
+    if guidance.get("run_command"):
+        lines.append(f"- run_command: `{guidance['run_command']}`")
     if guidance.get("verification_command"):
         lines.append(f"- verification_command: `{guidance['verification_command']}`")
     if guidance.get("install_command"):

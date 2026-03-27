@@ -1,7 +1,8 @@
 import os
 from pathlib import Path
 
-WORKSPACE = Path(__file__).resolve().parents[2]
+workspace_hint = os.environ.get("READINESS_WORKING_DIR")
+WORKSPACE = Path(workspace_hint).resolve() if workspace_hint else Path.cwd().resolve()
 os.environ.setdefault("HF_ENDPOINT", "https://hf-mirror.com")
 if not any(os.environ.get(name) for name in ("HUGGINGFACE_HUB_CACHE", "HF_DATASETS_CACHE", "HF_HOME")):
     os.environ["HF_HOME"] = str(WORKSPACE / "huggingface-cache")

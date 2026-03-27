@@ -1,10 +1,13 @@
 import json
 import os
 import shutil
+import socketserver
 import subprocess
 import sys
+import threading
 from pathlib import Path
 from typing import Optional
+from http.server import BaseHTTPRequestHandler
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -173,6 +176,29 @@ def test_discover_execution_target_extracts_remote_huggingface_assets_from_scrip
     assert target["model_hub_id"] == "Qwen/Qwen3-0.6B"
     assert target["dataset_hub_id"] == "karthiksagarn/astro_horoscope"
     assert target["dataset_split"] == "train"
+
+
+def test_qwen3_example_prefers_readiness_working_dir_over_script_location():
+    example_path = ROOT / "examples" / "qwen3_0_6b_training_example.py"
+    text = example_path.read_text(encoding="utf-8")
+
+    assert 'os.environ.get("READINESS_WORKING_DIR")' in text
+    assert "Path.cwd().resolve()" in text
+    assert "parents[2]" not in text
+
+
+class _OkHandler(BaseHTTPRequestHandler):
+    def do_HEAD(self):
+        self.send_response(200)
+        self.end_headers()
+
+    def do_GET(self):
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(b"ok")
+
+    def log_message(self, format, *args):
+        return
 
 
 def test_discover_execution_target_defaults_training_framework_to_pta_without_explicit_mindspore(tmp_path: Path):
@@ -3281,10 +3307,12 @@ def test_build_readiness_report_includes_remote_asset_guidance_and_revalidation_
                 "target_type": "training",
                 "entry_script": "train.py",
                 "framework_path": "pta",
+                "working_dir": str(tmp_path),
             }
         ),
         encoding="utf-8",
     )
+    (tmp_path / ".readiness.env").write_text("export READINESS_WORKING_DIR=test\n", encoding="utf-8")
     normalized_path.write_text(
         json.dumps(
             {
@@ -3384,10 +3412,112 @@ def test_build_readiness_report_includes_remote_asset_guidance_and_revalidation_
 
     assert verdict["remote_asset_guidance"]["mode"] == "remote-assets"
     assert verdict["remote_asset_guidance"]["hf_endpoint"] == "https://hf-mirror.com"
+    assert verdict["selected_environment_guidance"]["readiness_env_path"] == str((tmp_path / ".readiness.env").resolve())
+    assert verdict["selected_environment_guidance"]["source_command"] == f"source {(tmp_path / '.readiness.env').resolve()}"
     assert verdict["revalidated"] is True
     assert verdict["revalidation_covered_scopes"] == ["framework", "workspace-assets"]
     assert "## Remote Asset Guidance" in markdown
     assert "huggingface-cache" in markdown
+    assert "source_command:" in markdown
+
+
+def test_build_dependency_closure_http_probe_accepts_reachable_hf_endpoint(tmp_path: Path):
+    target_path = tmp_path / "target.json"
+    output_path = tmp_path / "closure.json"
+
+    with socketserver.TCPServer(("127.0.0.1", 0), _OkHandler) as server:
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        endpoint = f"http://127.0.0.1:{server.server_address[1]}"
+        target_path.write_text(
+            json.dumps(
+                {
+                    "working_dir": str(tmp_path),
+                    "target_type": "training",
+                    "model_hub_id": "Qwen/Qwen3-0.6B",
+                    "dataset_hub_id": "karthiksagarn/astro_horoscope",
+                    "dataset_split": "train",
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        env = dict(os.environ)
+        env["HF_ENDPOINT"] = endpoint
+        run_script(
+            "build_dependency_closure.py",
+            "--target-json",
+            str(target_path),
+            "--output-json",
+            str(output_path),
+            env=env,
+        )
+        server.shutdown()
+        thread.join(timeout=2)
+
+    closure = json.loads(output_path.read_text(encoding="utf-8"))
+    remote_assets = closure["layers"]["remote_assets"]
+    assert remote_assets["endpoint_reachable"] is True
+    assert remote_assets["endpoint_error"] is None
+
+
+def test_collect_readiness_checks_ignores_output_path_assets(tmp_path: Path):
+    target_path = tmp_path / "target.json"
+    closure_path = tmp_path / "closure.json"
+    output_path = tmp_path / "checks.json"
+
+    target_path.write_text(
+        json.dumps(
+            {
+                "working_dir": str(tmp_path),
+                "target_type": "training",
+                "framework_path": "pta",
+            }
+        ),
+        encoding="utf-8",
+    )
+    closure_path.write_text(
+        json.dumps(
+            {
+                "working_dir": str(tmp_path),
+                "target_type": "training",
+                "layers": {
+                    "system": {"device_paths_present": True, "ascend_env_script_present": True, "ascend_env_active": True},
+                    "python_environment": {"selection_status": "selected", "probe_python_path": sys.executable, "probe_source": "explicit"},
+                    "framework": {
+                        "framework_path": "pta",
+                        "required_packages": ["torch", "torch_npu"],
+                        "import_probes": {"torch": True, "torch_npu": True},
+                        "smoke_prerequisite": {"status": "passed", "details": ["ok"], "error": None},
+                    },
+                    "runtime_dependencies": {"required_imports": [], "import_probes": {}, "implicit_dependency_profile": []},
+                    "remote_assets": {"assets": {}},
+                    "workspace_assets": {
+                        "entry_script": {"required": True, "exists": True, "satisfied": True, "path": "train.py"},
+                        "model_path": {"required": True, "exists": True, "satisfied": True, "path": "model"},
+                        "dataset_path": {"required": True, "exists": True, "satisfied": True, "path": "dataset"},
+                        "checkpoint_path": {"required": False, "exists": False, "satisfied": True, "path": None},
+                        "output_path": {"required": True, "exists": False, "satisfied": False, "path": "outputs"},
+                    },
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    run_script(
+        "collect_readiness_checks.py",
+        "--target-json",
+        str(target_path),
+        "--closure-json",
+        str(closure_path),
+        "--output-json",
+        str(output_path),
+    )
+
+    checks = json.loads(output_path.read_text(encoding="utf-8"))
+    ids = {item["id"] for item in checks}
+    assert "workspace-output_path" not in ids
 
 
 def test_build_readiness_report_guides_against_system_python_when_workspace_env_missing(tmp_path: Path):
