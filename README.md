@@ -111,7 +111,7 @@ See [Codex AGENTS guide](https://developers.openai.com/codex/guides/agents-md) f
 |-------|-------------|
 | `accuracy-agent` | Diagnose accuracy regressions, drift, wrong results, and cross-platform mismatch after successful execution |
 | `algorithm-agent` | Adapt a paper feature or released reference implementation into an existing model codebase, including specialized routes such as mHC integration, and prepare the patch for readiness validation |
-| `readiness-agent` | Analyze a local single-machine training workspace and validate pre-run readiness before training |
+| `readiness-agent` | Check whether a local single-machine workspace is ready to train or run inference before execution |
 | `failure-agent` | Diagnose MindSpore and PTA (torch_npu) training and runtime failures with evidence-backed root-cause validation |
 | `performance-agent` | Diagnose throughput, latency, memory, utilization, dataloader, and communication bottlenecks after the workload already runs |
 
@@ -123,7 +123,7 @@ See [Codex AGENTS guide](https://developers.openai.com/codex/guides/agents-md) f
 |---------|-------------|
 | `/diagnose` | Top-level symptom router for failure, accuracy, and performance diagnosis |
 | `/fix` | Top-level symptom router for diagnose + propose + confirm + apply + verify |
-| `/readiness` | Top-level pre-run readiness workflow for training workspaces |
+| `/readiness` | Top-level pre-run readiness workflow for local single-machine training or inference workspaces |
 | `/feature` | Top-level feature adaptation workflow for adding algorithm changes |
 | `/api-helper` | API chain discovery workflow |
 | `/operator-agent` | Operator routing and implementation workflow with custom-access or native-framework integration |
@@ -141,7 +141,7 @@ See [Codex AGENTS guide](https://developers.openai.com/codex/guides/agents-md) f
 |---------|-------------|
 | `/accuracy-agent` | Direct specialist entry for accuracy diagnosis workflow after successful execution |
 | `/algorithm-agent` | Direct specialist entry for algorithm feature adaptation workflow with patch generation, route-specific planning such as mHC, and readiness handoff |
-| `/readiness-agent` | Direct specialist entry for single-machine training workspace readiness workflow |
+| `/readiness-agent` | Direct specialist entry for single-machine training or inference workspace readiness workflow |
 | `/failure-agent` | Direct specialist entry for failure diagnosis workflow with evidence, root-cause validation, and report output |
 | `/performance-agent` | Direct specialist entry for performance diagnosis workflow with bottleneck validation and report output |
 
@@ -217,7 +217,7 @@ mindspore-skills/
 │   ├── api-helper/          # MindSpore API call-chain discovery
 │   ├── model-agent/         # Top-level model migration entry
 │   ├── operator-agent/      # Framework operator implementation
-│   ├── readiness-agent/     # Training workspace readiness and preflight
+│   ├── readiness-agent/     # Single-machine workspace readiness and preflight
 │   ├── accuracy-agent/      # Accuracy diagnosis after successful execution
 │   ├── algorithm-agent/     # Feature adaptation and route-specific patch planning for existing models
 │   ├── failure-agent/       # Training and runtime failure diagnosis

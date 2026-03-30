@@ -312,7 +312,7 @@ Recommended section:
 
 | Skill | Path | Description |
 |-------|------|-------------|
-| readiness-agent | skills/readiness-agent/ | validate single-machine training workspace readiness |
+| readiness-agent | skills/readiness-agent/ | validate single-machine training or inference workspace readiness |
 | failure-agent | skills/failure-agent/ | diagnose crashes and runtime failures |
 | accuracy-agent | skills/accuracy-agent/ | diagnose accuracy drift and wrong results |
 | performance-agent | skills/performance-agent/ | profile and optimize performance |

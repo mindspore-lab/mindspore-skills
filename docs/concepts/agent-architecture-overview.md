@@ -68,7 +68,7 @@ documentation, testing, and future orchestration remain predictable.
 ### `readiness-agent`
 
 Purpose:
-- validate whether a single-machine training workspace is ready to run
+- validate whether a single-machine training or inference workspace is ready to run
 
 Core workflow:
 1. `workspace-analyzer`
@@ -77,14 +77,14 @@ Core workflow:
 4. `report-builder`
 
 What it checks:
-- training entrypoints and config
+- training or inference entrypoints and config
 - framework and backend clues
 - environment and library compatibility
 - dataset, model, checkpoint, and storage readiness
 
 What it does not do:
-- package installation
-- environment repair
+- system-layer driver, firmware, or CANN repair
+- broad machine cleanup outside the selected workspace or environment
 - post-run diagnosis
 - multi-node distributed checks
 

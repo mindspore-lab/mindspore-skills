@@ -20,7 +20,7 @@
                    },
                    {
                        "name":  "readiness-agent",
-                       "description":  "Analyze a local single-machine training workspace and validate pre-run readiness before training",
+                       "description":  "Certify whether a local single-machine workspace is runnable for the intended training or inference task",
                        "path":  "skills/readiness-agent/SKILL.md"
                    },
                    {
