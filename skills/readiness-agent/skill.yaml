@@ -53,11 +53,7 @@ inputs:
   - name: "selected_python"
     type: "path"
     required: false
-    description: "Explicit Python interpreter to use for the workspace and readiness-agent helper execution."
-  - name: "selected_env_root"
-    type: "path"
-    required: false
-    description: "Explicit environment root whose Python should become the selected workspace interpreter."
+    description: "Explicit Python interpreter to use for the workspace readiness workflow."
   - name: "config_path"
     type: "path"
     required: false
@@ -89,22 +85,12 @@ inputs:
   - name: "task_smoke_cmd"
     type: "string"
     required: false
-    description: "Optional explicit minimal smoke command for controlled task-level verification after prerequisite checks pass."
-  - name: "factory_root"
-    type: "path"
-    required: false
-    description: "Optional local Factory root for compatibility evidence and supporting knowledge."
+    description: "Optional explicit smoke command for stronger target validation."
   - name: "allow_network"
     type: "boolean"
     required: false
     default: false
     description: "Allows network-dependent remediation such as confirmed model download or remote compatibility lookup when the workflow permits it."
-  - name: "fix_scope"
-    type: "enum"
-    required: false
-    default: "safe-user-space"
-    choices: ["none", "safe-user-space"]
-    description: "Restricts remediation scope. Safe-user-space allows only non-system fixes inside the permitted workspace and selected Python environment."
 
 outputs:
   report_schema: "skills/_shared/contract/report.schema.json"
