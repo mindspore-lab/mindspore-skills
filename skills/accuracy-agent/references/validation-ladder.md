@@ -93,3 +93,15 @@ Pass condition:
 - If the task needs training alignment, do not stop before a short run unless
   the user explicitly accepts limited evidence.
 - Do not restore full scale before lower-rung checks are clean.
+
+## Residual Gap Handling
+
+If one issue has already been fixed or isolated but a residual gap remains
+elsewhere, make the residual visible before starting a new diagnosis round.
+
+Before continuing, consider neutralizing the already known issue so multiple
+error sources do not stack together. Common options:
+
+- replace the confirmed operator with an identity or no-op on both sides
+- replay a trusted baseline tensor into the target path
+- stub the already-fixed path with a reduced deterministic equivalent

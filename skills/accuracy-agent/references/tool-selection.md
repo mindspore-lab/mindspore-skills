@@ -116,3 +116,12 @@ If none of them are available, fall back to:
 - manual `.npy` comparison
 - module-level statistics
 - one-step experiments
+
+## Debug Script Hygiene
+
+When you are about to write or review a reduced repro or debug script:
+
+- confirm the intended framework stack and relevant package versions first
+- confirm the script really executes on the intended device path
+- enable determinism before comparing tiny deltas
+- print dtype and device for suspicious tensors instead of inferring them

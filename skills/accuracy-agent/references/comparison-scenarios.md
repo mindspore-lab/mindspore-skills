@@ -38,9 +38,12 @@ Typical case:
 Start here:
 
 1. Run configuration and determinism checks first.
-2. Compare step1 loss on the same input and weights.
-3. If step1 differs, narrow the first tensor mismatch from coarse modules down.
-4. If step1 matches but later diverges, switch quickly to gradients and
+2. Confirm the baseline is really PyTorch on Ascend, not plain CPU `torch`.
+   Check `torch`, `torch_npu`, and actual device placement before trusting the
+   comparison.
+3. Compare step1 loss on the same input and weights.
+4. If step1 differs, narrow the first tensor mismatch from coarse modules down.
+5. If step1 matches but later diverges, switch quickly to gradients and
    one-step updates.
 
 Why this path:

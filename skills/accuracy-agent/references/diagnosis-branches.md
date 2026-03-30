@@ -21,11 +21,17 @@ Recommended sequence:
 
 1. Reconfirm aligned weights and inputs.
 2. Check preprocessing outputs before entering the model.
-3. Compare model outputs at coarse module boundaries.
-4. Narrow to the first mismatching node or operator.
-5. If the mismatch is stable at one operator, switch to operator-level triage
+3. Compare model outputs at coarse module boundaries until the first stable
+   mismatch is visible.
+4. If a module mismatches, verify that its inputs are already aligned.
+5. If the module inputs mismatch, walk upstream to the producer instead of
+   blaming an operator inside the current module.
+6. If the module inputs align, verify model parameters, `register_buffer`
+   state, dtype, API parameters, and actual device placement.
+7. Narrow to the first mismatching node or operator.
+8. If the mismatch is stable at one operator, switch to operator-level triage
    before attributing the bug to the implementation.
-6. Only then talk about a concrete fix.
+9. Only then talk about a concrete fix.
 
 Do not:
 
@@ -102,7 +108,16 @@ Recommended sequence:
 1. Use a fixed golden input and compare the final output first.
 2. Check metric and postprocessing definitions next.
 3. If needed, walk backward to the earliest internal mismatch that matters.
-4. Keep the comparison deterministic and scope-limited.
+4. Prefer module-level captures first. If one module mismatches, verify its
+   inputs before checking operators inside it.
+5. If the module inputs mismatch, keep walking upstream until you reach the
+   first stable divergence point.
+6. If the module inputs align, verify model parameters, `register_buffer`
+   state, dtype, API parameters, and actual device placement before
+   operator-level probes.
+7. Keep the comparison deterministic and scope-limited.
+8. Do not treat a small residual delta as acceptable until you have evidence
+   for its source.
 
 Do not:
 

@@ -7,6 +7,10 @@ Read this file only when the diagnosis involves Ascend backend behavior.
 Two runs can differ even when the model code looks equivalent, because the
 backend may choose different precision or kernel paths.
 
+If the baseline is PyTorch on Ascend, first verify that the script actually
+imports `torch_npu` and executes tensors and modules on NPU. A plain CPU
+`torch` script is not an Ascend baseline.
+
 ## High-Value Checks
 
 ### HF32 or Other Special Precision Modes
