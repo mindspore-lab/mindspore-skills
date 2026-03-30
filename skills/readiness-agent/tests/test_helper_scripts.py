@@ -201,6 +201,23 @@ class _OkHandler(BaseHTTPRequestHandler):
         return
 
 
+class _RetryProbeHandler(BaseHTTPRequestHandler):
+    api_attempts = 0
+
+    def do_HEAD(self):
+        if self.path == "/":
+            self.send_response(405)
+        elif self.path == "/api/models/Qwen/Qwen3-0.6B":
+            type(self).api_attempts += 1
+            self.send_response(200 if type(self).api_attempts >= 3 else 503)
+        else:
+            self.send_response(404)
+        self.end_headers()
+
+    def log_message(self, format, *args):
+        return
+
+
 def test_discover_execution_target_defaults_training_framework_to_pta_without_explicit_mindspore(tmp_path: Path):
     output = tmp_path / "target.json"
 
@@ -3459,6 +3476,48 @@ def test_build_dependency_closure_http_probe_accepts_reachable_hf_endpoint(tmp_p
     remote_assets = closure["layers"]["remote_assets"]
     assert remote_assets["endpoint_reachable"] is True
     assert remote_assets["endpoint_error"] is None
+
+
+def test_build_dependency_closure_http_probe_retries_and_falls_back_to_api_probe(tmp_path: Path):
+    target_path = tmp_path / "target.json"
+    output_path = tmp_path / "closure.json"
+    _RetryProbeHandler.api_attempts = 0
+
+    with socketserver.TCPServer(("127.0.0.1", 0), _RetryProbeHandler) as server:
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        endpoint = f"http://127.0.0.1:{server.server_address[1]}"
+        target_path.write_text(
+            json.dumps(
+                {
+                    "working_dir": str(tmp_path),
+                    "target_type": "training",
+                    "model_hub_id": "Qwen/Qwen3-0.6B",
+                    "dataset_hub_id": "karthiksagarn/astro_horoscope",
+                    "dataset_split": "train",
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        env = dict(os.environ)
+        env["HF_ENDPOINT"] = endpoint
+        run_script(
+            "build_dependency_closure.py",
+            "--target-json",
+            str(target_path),
+            "--output-json",
+            str(output_path),
+            env=env,
+        )
+        server.shutdown()
+        thread.join(timeout=2)
+
+    closure = json.loads(output_path.read_text(encoding="utf-8"))
+    remote_assets = closure["layers"]["remote_assets"]
+    assert remote_assets["endpoint_reachable"] is True
+    assert remote_assets["endpoint_error"] is None
+    assert _RetryProbeHandler.api_attempts == 3
 
 
 def test_collect_readiness_checks_ignores_output_path_assets(tmp_path: Path):

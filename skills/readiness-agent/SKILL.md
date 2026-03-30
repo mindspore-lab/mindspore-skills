@@ -193,7 +193,7 @@ If no selected workspace Python is available:
 - do not silently trust system Python as if it represented the target
 - classify the issue as an environment problem, or repair the selected
   environment first when the workflow allows it
-- in `fix` or `auto` mode, prefer creating or repairing a workspace-local
+- in `fix` mode, prefer creating or repairing a workspace-local
   environment such as `.venv`, then rerun the full helper pipeline once with
   the newly selected interpreter
 

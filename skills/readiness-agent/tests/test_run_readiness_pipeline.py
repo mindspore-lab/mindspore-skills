@@ -168,10 +168,13 @@ def test_run_readiness_pipeline_check_does_not_create_workspace_env(tmp_path: Pa
     )
 
     _, verdict = load_report_pair(output_dir / "report.json")
+    remediation = json.loads((output_dir / "meta" / "remediation.json").read_text(encoding="utf-8"))
     fix_applied = json.loads((output_dir / "meta" / "fix-applied.json").read_text(encoding="utf-8"))
     readiness_env = (workspace / ".readiness.env").read_text(encoding="utf-8")
 
     assert verdict["status"] == "BLOCKED"
+    assert remediation["actions"]
+    assert any(action["action_type"] == "create_or_select_env" for action in remediation["actions"])
     assert fix_applied["execute"] is False
     assert fix_applied["executed_actions"] == []
     assert not (workspace / ".venv").exists()

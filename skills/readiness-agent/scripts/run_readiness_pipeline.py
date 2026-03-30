@@ -432,7 +432,7 @@ def run_fix_plan_and_execution(
     maybe_add(execute_args, "--python-version", args.python_version)
     maybe_add(execute_args, "--path-profile", args.path_profile)
 
-    if args.mode in {"fix", "auto"}:
+    if args.mode == "fix":
         execute_args.extend(
             [
                 "--execute",
@@ -446,22 +446,6 @@ def run_fix_plan_and_execution(
 
     run_helper("execute_env_fix.py", helper_runner, working_dir, execute_args)
     return load_json(paths["fix_applied_json"])
-
-def write_default_fix_outputs(paths: Dict[str, Path]) -> dict:
-    plan = {
-        "actions": [],
-        "skipped": [],
-    }
-    fix_applied = {
-        "execute": False,
-        "results": [],
-        "executed_actions": [],
-        "failed_actions": [],
-        "needs_revalidation": [],
-    }
-    write_json(paths["plan_json"], plan)
-    write_json(paths["fix_applied_json"], fix_applied)
-    return fix_applied
 
 
 def build_readiness_env_payload(working_dir: Path, pipeline_state: dict) -> dict:
@@ -664,10 +648,7 @@ def main() -> int:
         args.selected_python,
         args.selected_env_root,
     )
-    if args.mode == "fix":
-        fix_applied = run_fix_plan_and_execution(args, working_dir, paths, initial_state)
-    else:
-        fix_applied = write_default_fix_outputs(paths)
+    fix_applied = run_fix_plan_and_execution(args, working_dir, paths, initial_state)
 
     final_state = initial_state
     passes = 1

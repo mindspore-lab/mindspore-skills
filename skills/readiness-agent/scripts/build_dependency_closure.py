@@ -281,15 +281,20 @@ def probe_hf_endpoint(endpoint: str) -> Tuple[bool, Optional[str]]:
         endpoint,
         urljoin(endpoint + "/", "api/models/Qwen/Qwen3-0.6B"),
     ]
-    try:
+    errors: List[str] = []
+    for attempt in range(3):
         for probe_url in probe_urls:
-            request = Request(probe_url, method="HEAD", headers={"User-Agent": "readiness-agent/0.1"})
-            with urlopen(request, timeout=5) as response:
-                status = getattr(response, "status", None) or response.getcode()
-                if status and int(status) < 500:
-                    return True, None
-    except Exception as exc:
-        return False, str(exc)
+            try:
+                request = Request(probe_url, method="HEAD", headers={"User-Agent": "readiness-agent/0.1"})
+                with urlopen(request, timeout=5) as response:
+                    status = getattr(response, "status", None) or response.getcode()
+                    if status and int(status) < 500:
+                        return True, None
+                    errors.append(f"attempt {attempt + 1} {probe_url}: unexpected status {status}")
+            except Exception as exc:
+                errors.append(f"attempt {attempt + 1} {probe_url}: {exc}")
+    if errors:
+        return False, "; ".join(errors[-3:])
     return False, "HF endpoint probe did not return a successful HTTP response"
 def run_json_probe_with_python(
     python_path: Path,
