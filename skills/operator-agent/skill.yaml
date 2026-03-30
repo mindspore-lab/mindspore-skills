@@ -1,8 +1,8 @@
 schema_version: "1.1.0"
 name: "operator-agent"
 display_name: "Op Agent"
-description: "Route and build framework operators through either custom-access integration or native-framework integration, then verify the result and deliver a plugin, extension, or newly built wheel."
-version: "0.3.0"
+description: "Build framework operators through either custom-access integration or native-framework integration, then verify the result and deliver a plugin, extension, or newly built wheel."
+version: "0.2.0"
 
 entry:
   type: "manual"
@@ -31,19 +31,11 @@ inputs:
     type: "string"
     required: true
     description: "Operator or API name to implement."
-  - name: "api_name"
-    type: "string"
-    required: false
-    description: "MindSpore public API name when the user asks from the API surface rather than the primitive name."
   - name: "backend"
     type: "enum"
     required: false
     choices: ["cpu", "gpu", "npu"]
     description: "Target backend when already known."
-  - name: "backend_alias"
-    type: "string"
-    required: false
-    description: "Original backend wording from the task, such as Ascend or aclnn, before normalization."
   - name: "method_preference"
     type: "enum"
     required: false
@@ -53,14 +45,6 @@ inputs:
     type: "string"
     required: false
     description: "Expected output such as demo, plugin, framework integration, or new wheel."
-  - name: "need_op_info_tests"
-    type: "boolean"
-    required: false
-    description: "Whether MindSpore op_info ST coverage should be generated or updated."
-  - name: "need_remote_validation"
-    type: "boolean"
-    required: false
-    description: "Whether remote deploy-and-test evidence is required."
 
 outputs:
   report_schema: "skills/_shared/contract/report.schema.json"
@@ -80,7 +64,6 @@ dependencies:
 tags:
   - "operator"
   - "builder"
-  - "router"
   - "torch"
   - "mindspore"
   - "custom-op"

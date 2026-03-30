@@ -54,6 +54,13 @@ Do not use this skill for:
 - In `fix` mode, do not edit anything until you have presented the diagnosis,
   proposed the fix, and received explicit user confirmation.
 - Do not auto-submit or mutate Factory content.
+- If the first real failure point is a missing MindSpore API export, missing
+  primitive binding, missing backend dispatch, missing operator registration,
+  or other clear implementation gap, diagnose it as a missing implementation case.
+- For missing implementation cases, state the missing part first, then give any
+  short-term workaround and the proper completion path, and explicitly hand off
+  to `operator-agent`.
+
 
 ## Workflow
 
@@ -195,6 +202,7 @@ Propose one concrete fix based on the ranked diagnosis:
 - show the expected impact
 - show the minimal file, config, or environment changes
 - ask the user for explicit confirmation before applying
+- `operator-agent` works for api/ operator missing implementation cases
 
 ## Stage 6. Fix Application
 
