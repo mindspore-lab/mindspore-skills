@@ -42,6 +42,7 @@
 
 ### 0b. CANN/ACLNN 能力
 - [ ] `[MUST]` **CANN/ACLNN 能力确认**：正向/反向是否都有 ACLNN 大算子；不支持点形成书面结论。
+- [ ] `[MUST]` **ACLNN 接口实证（反幻觉）**：已通过 grep 或查阅头文件确认 `aclnnXxx` 接口真实存在，且参数签名与代码一致（禁止仅凭经验臆造）。
 - [ ] `[MUST]` **ACLNN 文档到位**：确认具体 `aclnnXxx`/`aclnnXxxGrad` 及其参数约束、layout/dtype/shape、workspace 接口。
 - [ ] `[SHOULD]` **反向路径算子完整性**：反向函数中所用到的所有算子都已接入 ACLNN（避免退回非 ACLNN 路径）。
 - [ ] `[SHOULD]` **aclnn 接口映射**：若算子名与 ACLNN 不一致，在 `aclnn_config.yaml`（或等价配置）中添加映射。
@@ -290,6 +291,10 @@
 ## 11. 质量门禁（项目要求摘要）
 - [ ] `[MUST]` 行长 ≤120；无 Tab；UTF-8；无多余空格；文件末尾保留一行空行。
 - [ ] `[MUST]` 通过项目要求的 Check_*（Notebooklint/Pylint/Rstlint/Scanoss/Shellcheck/Tab/Utf8 等）。
+
+## 11b. 跨文件变更一致性（D1）
+
+- [ ] `[MUST]` 若修改了参数名/类型/默认值/约束，已对 8 类文件（op_def/api_def YAML、GeneralInfer C++、PyBoost C++、KBK kernel C++、bprop C++、Python 接口层、中英文文档）做全量检索并同步更新，旧值零残留。
 
 ## 12. 最终文件清单验证（提交前必做）
 

@@ -39,6 +39,10 @@
 
 ### 路径 2 分支：手写 Kernel 文件
 
+#### Step 0：ACLNN 接口核对（反幻觉）
+
+与 [04-pyboost.md Step 0](./04-pyboost.md#step-0aclnn-接口核对反幻觉) 相同。若 Step 4（PyBoost）已完成核对，直接引用结论即可。
+
 #### Step 1：标准结构（`reference.md` §6）
 
 - `GetWorkSpaceInfo()`：取参 + `GetWorkspaceForResize`

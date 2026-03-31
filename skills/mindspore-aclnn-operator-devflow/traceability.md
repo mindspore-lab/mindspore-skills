@@ -1,10 +1,42 @@
 # Traceability（文档溯源映射）
 
-目的：记录本 skill 的流程/清单来源于哪些原始文档，便于维护者核对"某条要求来自哪里"。
+目的：记录本 skill 的流程/清单来源于哪些原始文档，便于维护者核对"某条要求来自哪里"。Skill 维护策略见 `reference.md` §31。
 
 > **注意**：下表中的源文档（`算子流程/` 目录下的 18 篇）**不随 skill 分发**。
 > 其内容已全部提炼到 `reference.md`、`checklists.md`、`examples.md` 中，
 > skill 使用者无需拥有这些源文档即可正常使用。本文件仅供 skill 维护和溯源时参考。
+
+---
+
+## Workflow 与源文档对齐（防止「摘要导致遗漏」）
+
+**问题根因**：Workflow 写的是「见 reference.md §X」；reference 各章是源文档的**摘要**。摘要必然丢失细节（如 09-docs 只写了 §11 摘要，未覆盖 5. 资料开发指导 的六种场景、开始前事项、常见问题等）。此前「全面检查」多在做**内部一致性**（步骤是否连贯、是否引用了 reference），**没有做「用源文档逐节核对 workflow」**，因此遗漏无法暴露。
+
+**对齐纪律**（维护 / 全面检查时必须执行）：
+
+1. **识别对应关系**：若某 workflow **对应单一、明确的源文档**（见下表），则该 workflow 的完整性必须以**源文档全文**为锚，不能只以 reference 摘要为准。
+2. **核对动作**：打开源文档，按章节/表格逐项问「workflow 或 checklists 是否覆盖了这条」；缺失则补到 workflow 或注明「详见源文档 §X.X」。
+3. **对齐状态表**：下表记录「workflow ↔ 源文档」的**最后一次逐节核对**时间。未核对或源文档更新后未再核对则标为待核对。
+
+| Workflow | 主要源文档 | 对齐状态 | 备注 |
+| --- | --- | --- | --- |
+| 09-docs | 算子开发指导/5. 资料开发指导.md | 已对齐（2025-02） | 已补：开始前事项、六种场景、mint 特例、常见问题、接口列表 |
+| 08-testing | 3. 算子开发；7. 接口性能自验工具；4. 算子关键特性 | 已核对（2025-02） | 已补：Step 7 反向调试/set_inputs/apitimewrapper/vmap；详见 reconciliation-report |
+| 07-export | 2. 接口开发 | 已核对（2025-02） | 已补：对标约束、__all__ 两处、Tensor GE resource.cc/standard_method；详见 reconciliation-report |
+| 06-bprop | 算子反向注意事项；aclnn开发示例 | 已核对（2025-02） | 已补：inplace SetUnusedInputs/CloneInplaceInput、str 参数；详见 reconciliation-report |
+| 05-kbk | aclnn开发示例；ResizeKernelLaunch | 已核对（2025-02） | 与 reference §6/§16/§29 一致，小补见 reconciliation-report |
+| 04-pyboost | aclnn开发示例；reference §29 | 已核对（2025-02） | 与 reference §5/§29 一致，小补见 reconciliation-report |
+| 03-general-infer | 3. 算子开发；4. 算子关键特性 | 已核对（2025-02） | 以 reference §4/§27 为据，无大漏 |
+| 02-code-generation | 多源（YAML/生成） | 已核对（2025-02） | 以 reference §2/§3 为据 |
+| 01-yaml-definition | 多源（YAML 模板/接口策略） | 已核对（2025-02） | 以 reference §2/§19 为据 |
+| 00-pre-checks | 2. 接口开发；ACLNN 整体流程；PTA 审查 | 已核对（2025-02） | 以 reference §19/§25/§28 为据 |
+| 10-delivery | 11.算子开发开源运作规范；Aclnn算子对接开发整体流程 | 已核对（2025-02） | 以 reference §10/§13/§21/§30 为据 |
+
+**何时触发对齐**：① 用户反馈「某 step 缺关键信息」时，优先对该 workflow 做一次源文档核对；② 计划中的「全面检查」必须包含：对「有单一明确源文档」的 workflow 做上表核对并更新对齐状态。
+
+**逐条核对结果**：见 `workflows/reconciliation-report.md`（遗漏项与补充动作）。
+
+---
 
 ## 源文档 → skill 落点
 

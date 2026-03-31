@@ -37,8 +37,9 @@
 | 不可微分入参 | `ib->OutZeros(x)` |
 | 全部不可微分 | `ReturnZeros` |
 | 梯度理论为 0 | `ib->ZerosLikeExt()` |
-| inplace 反向 | `CloneInplaceInput(...)` 保留旧值 |
+| inplace 反向 | 输入与输出为同一对象时，**只要有一个被用于反向就不能加入 SetUnusedInputs**；反向逻辑需要「更新前的 self」时，注册 **CloneInplaceInput**（见算子反向注意事项 §3） |
 | KBK 动态 shape inplace | `ib->Depend(target, inplace_call)` |
+| str 类型参数梯度 | 若在 str 位置返回 OutZeros，KBK 反向动态 shape 可能报错，以实际框架行为为准（见算子反向注意事项 §7） |
 
 ### Step 4：SetUnusedInputs（`reference.md` §7.2）
 
