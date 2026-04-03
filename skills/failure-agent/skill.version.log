@@ -1,3 +1,28 @@
+2026-04-03 | failure-agent | version 0.7.0
+Summary:
+- Introduced `reference/index/` and skill-local one-shot index builders so `failure-agent` can consume stable minimal YAML indexes without relying on repo-top docs or multi-script builder flows.
+
+Detailed changes:
+- Added `reference/index/` as the default home for generated runtime indexes.
+- Added `scripts/index_builders/generate_cann_failure_index.py` as the single CANN index builder entrypoint.
+- Added `scripts/index_builders/generate_mindspore_failure_index.py` as the single MindSpore Mint index builder entrypoint.
+- Changed the default generated asset set to minimal structured outputs only.
+- Renamed the CANN ACLNN index output to `cann_aclnn_api_index.yaml`.
+- Renamed the MindSpore methodology note to `mint_api_methodology.md`.
+- Added provenance metadata requirements to generated YAML payloads.
+- Added local `.tmp` builder workspace handling and ignore rules.
+- Switched the CANN builder to remote source construction by default, cloning `runtime` plus the required `ops-*` repositories and generating YAML directly from source markdown.
+- Added Windows-friendly remote clone handling for the MindSpore builder via `core.longpaths=true`.
+- Updated `SKILL.md` and lightweight references to read from `reference/index/` first and to treat raw markdown and review artifacts as optional maintenance outputs.
+- Kept `failure-agent` manual-only, Factory-read-only, and did not migrate external README, LICENSE, or adaptation docs.
+
+Validation:
+- `python D:\github\mindspore-skills\skills\failure-agent\scripts\index_builders\generate_cann_failure_index.py`
+- `python D:\github\mindspore-skills\skills\failure-agent\scripts\index_builders\generate_mindspore_failure_index.py --repo D:\github\model-diagnosis-agent\code\mindspore --skip-gen-ops`
+- `python D:\github\mindspore-skills\skills\failure-agent\scripts\index_builders\generate_mindspore_failure_index.py`
+- `python -m pytest D:\github\mindspore-skills\skills\failure-agent\tests -q`
+- Result: 12 passed, 1 warning
+
 2026-03-21 | failure-agent | version 0.5.x summary
 Summary:
 - The 0.5.x line turned `failure-agent` into a stable triage-and-routing skill for MindSpore and PTA with direct-read Factory alignment, local fallback references, and tighter dual-stack diagnosis rules.

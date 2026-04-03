@@ -3,6 +3,15 @@
 Use this file when stack is `ms` and the failure sits near API usage,
 execution mode, backend dispatch, or operator support.
 
+Default structured inputs live in:
+
+- `reference/index/mint_api_index.yaml`
+- `reference/index/mint_api_methodology.md`
+
+Optional maintenance-side outputs such as `mint_api_evidence.yaml`,
+`mint_api_review_queue.yaml`, `mint_api_index_review.md`, and
+`mint_api_index_rulebook.md` are not part of the default runtime read path.
+
 ## API Layer Hierarchy
 
 Read the issue from top to bottom:
@@ -130,3 +139,6 @@ rg "FACTORY_REG.*{OpName}" mindspore/mindspore/ops/kernel/
 
 If the issue still looks like a MindSpore operator or backend implementation
 problem after these checks, move to [mindspore-dianosis](mindspore-dianosis.md).
+
+Prefer the YAML index first. Use the methodology note to understand how the
+mint index is structured and what kinds of evidence it captures.

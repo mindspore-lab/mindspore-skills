@@ -50,6 +50,7 @@ Do not use this skill for:
 - If evidence conflicts or is incomplete, downgrade confidence instead of
   pretending certainty.
 - Do not claim a fix is confirmed until the user verifies it.
+- Do not auto-edit code, configs, or the environment in this skill.
 - In `diagnose` mode, do not edit code, configs, or the environment.
 - In `fix` mode, do not edit anything until you have presented the diagnosis,
   proposed the fix, and received explicit user confirmation.
@@ -225,6 +226,22 @@ Load these references when needed:
 - `reference/mindspore-dianosis.md`
 - `reference/cann-api-reference.md`
 - `reference/failure-showcase.md`
+- `reference/index/cann_error_index.yaml`
+- `reference/index/cann_aclnn_api_index.yaml`
+- `reference/index/mint_api_index.yaml`
+- `reference/index/mint_api_methodology.md`
+
+Read them in this order by default:
+
+1. `reference/failure-showcase.md`
+2. `reference/index/cann_error_index.yaml`
+3. `reference/index/cann_aclnn_api_index.yaml`
+4. `reference/index/mint_api_index.yaml`
+5. `reference/index/mint_api_methodology.md`
+
+Optional raw source-doc outputs such as `aclError.md`, `aclnnApiError.md`,
+`mint_api_evidence.yaml`, and review artifacts are maintenance-side files. Do
+not treat them as default runtime dependencies.
 
 ## Scripts
 
@@ -232,6 +249,11 @@ Use these helper scripts when useful:
 
 - `scripts/collect_failure_context.py`
 - `scripts/summarize_traceback.py`
+
+Index generation is maintained with:
+
+- `scripts/index_builders/generate_cann_failure_index.py`
+- `scripts/index_builders/generate_mindspore_failure_index.py`
 
 ## Execution Notes
 

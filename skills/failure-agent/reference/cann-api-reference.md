@@ -2,6 +2,17 @@
 
 Use this file as a lightweight reminder for Ascend operator/API-side diagnosis.
 
+Default structured inputs live in:
+
+- `reference/index/cann_error_index.yaml`
+- `reference/index/cann_aclnn_api_index.yaml`
+
+Optional maintenance-side raw docs may also exist when explicitly generated:
+
+- `reference/index/aclError.md`
+- `reference/index/aclnnApiError.md`
+- `reference/index/aclnn_api_compact.md`
+
 ## When to use
 
 Use this reference when the failure clearly sits in:
@@ -45,3 +56,6 @@ High-value mappings:
 - use [pta-diagnosis](pta-diagnosis.md) for quick code routing
 - use [backend-diagnosis](backend-diagnosis.md) for broader layer triage
 - use [mindspore-dianosis](mindspore-dianosis.md) if source-level investigation is needed
+
+Prefer the YAML indexes first. Only read the optional markdown sources when the
+structured entries are insufficient for the current diagnosis.

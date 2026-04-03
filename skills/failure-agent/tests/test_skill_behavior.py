@@ -27,5 +27,11 @@ def test_references_and_scripts_are_declared():
     text = SKILL_MD.read_text(encoding="utf-8")
     assert "`reference/failure-taxonomy.md`" in text
     assert "`reference/root-cause-validation.md`" in text
+    assert "`reference/index/cann_error_index.yaml`" in text
+    assert "`reference/index/cann_aclnn_api_index.yaml`" in text
+    assert "`reference/index/mint_api_index.yaml`" in text
+    assert "`reference/index/mint_api_methodology.md`" in text
     assert "`scripts/collect_failure_context.py`" in text
     assert "`scripts/summarize_traceback.py`" in text
+    assert "`scripts/index_builders/generate_cann_failure_index.py`" in text
+    assert "`scripts/index_builders/generate_mindspore_failure_index.py`" in text

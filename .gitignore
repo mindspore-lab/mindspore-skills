@@ -5,3 +5,6 @@ examples/**/runs/
 __pycache__/
 *.pyc
 *.pyo
+
+# failure-agent builder workspaces
+skills/failure-agent/scripts/index_builders/.tmp/
