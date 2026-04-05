@@ -28,7 +28,7 @@
 
 :x: **Problem:** Need to integrate MHC (Manifold-constrained Hyperparameters) into Qwen3 on Ascend 910B
 
-:keyboard: **Type:** `/algo-agent "integrate MHC feature into Qwen3 model"`
+:keyboard: **Type:** `/algorithm-agent "integrate MHC feature into Qwen3 model"`
 
 :white_check_mark: **Result:** algorithm-agent analyzes the model structure, integrates MHC into the decoder layer, updates config, adds tests, and verifies the result
 
