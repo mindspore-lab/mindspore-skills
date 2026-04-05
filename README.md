@@ -15,7 +15,16 @@ MindSpore Skills can be used in two ways:
 
 ## Demo
 
-![Failure Agent Demo](docs/assets/faliure_agent.gif)
+<table>
+  <tr>
+    <td align="center"><b>failure-agent demo</b></td>
+    <td align="center"><b>acc agent demo</b></td>
+  </tr>
+  <tr>
+    <td><img src="docs/assets/faliure_agent.gif" width="420" /></td>
+    <td><img src="docs/assets/accuracy_agent.gif" width="420" /></td>
+  </tr>
+</table>
 
 ---
 
@@ -145,7 +154,7 @@ Specialist capabilities such as operator work, readiness checks, accuracy analys
 |---|---|
 | `/diagnose` | Top-level symptom router for failure, accuracy, and performance diagnosis |
 | `/fix` | Top-level symptom router for diagnose + propose + confirm + apply + verify |
-| `/migrate` | Migration router for HF / third-party model migration |
+| `/migrate` | Migration router for HF / third-party model migration, with readiness follow-up when the user wants to run locally |
 
 ---
 
@@ -167,6 +176,12 @@ Specialist capabilities such as operator work, readiness checks, accuracy analys
 
 ```bash
 /migrate port this HuggingFace qwen2 repo to MindSpore
+```
+
+### Migrate and make it runnable locally
+
+```bash
+/migrate I want to run this Hugging Face Transformers Qwen3 model in MindSpore on this machine
 ```
 
 ### Diagnose an accuracy issue

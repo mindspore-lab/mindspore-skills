@@ -15,7 +15,16 @@ MindSpore Skills 主要有两种使用方式：
 
 ## Demo
 
-![Failure Agent Demo](docs/assets/faliure_agent.gif)
+<table>
+  <tr>
+    <td align="center"><b>failure-agent demo</b></td>
+    <td align="center"><b>acc agent demo</b></td>
+  </tr>
+  <tr>
+    <td><img src="docs/assets/faliure_agent.gif" width="420" /></td>
+    <td><img src="docs/assets/accuracy_agent.gif" width="420" /></td>
+  </tr>
+</table>
 
 ---
 
@@ -145,7 +154,7 @@ MindSpore Skills 当前聚焦于 **模型训练工作流** 中最常见、价值
 |---|---|
 | `/diagnose` | failure、accuracy、performance 诊断的顶层症状路由入口 |
 | `/fix` | diagnose + propose + confirm + apply + verify 的顶层路由入口 |
-| `/migrate` | 面向 HF / 第三方模型迁移的顶层路由入口 |
+| `/migrate` | 面向 HF / 第三方模型迁移的顶层路由入口；如果用户目标是本地运行，也会继续进入 readiness 检查 |
 
 ---
 
@@ -167,6 +176,12 @@ MindSpore Skills 当前聚焦于 **模型训练工作流** 中最常见、价值
 
 ```bash
 /migrate port this HuggingFace qwen2 repo to MindSpore
+```
+
+### 迁移并让它在本机可运行
+
+```bash
+/migrate I want to run this Hugging Face Transformers Qwen3 model in MindSpore on this machine
 ```
 
 ### 诊断精度问题

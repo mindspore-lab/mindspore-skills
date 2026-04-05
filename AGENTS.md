@@ -25,7 +25,7 @@ Load the appropriate SKILL.md when users mention:
 **Task Entry Commands:**
 - **/diagnose**: classify the symptom and route to `failure-agent`, `accuracy-agent`, or `performance-agent` in diagnose mode
 - **/fix**: classify the symptom and route to `failure-agent`, `accuracy-agent`, or `performance-agent` in fix mode
-- **/migrate**: route to `migrate-agent` for migration route selection and verification planning
+- **/migrate**: route to `migrate-agent` for migration route selection and verification; if the user goal includes local run/train/infer readiness, continue with `readiness-agent`
 
 **Operator Questions:**
 - **api-helper**: "mint.*","operator", "forward", "api", "backward", "tensor.*", "mindspore.*"
@@ -47,6 +47,7 @@ Load the appropriate SKILL.md when users mention:
  - Do not give direct answers without following the skill workflow
  - Route operator implementation work to `operator-agent`
  - Route single-machine pre-run training or inference checks, missing-item analysis, and safe user-space readiness fixes to `readiness-agent`; do not use it for post-run crash or traceback diagnosis
+ - Route migration-first requests to `migrate-agent`; if the real user goal is "make this model run here", use `migrate-agent` to define the route and runtime requirements, then hand off to `readiness-agent`
  - Route runtime crashes and tracebacks after setup to `failure-agent`
  - Route wrong-result, drift, and regression cases after successful execution to `accuracy-agent`
  - Route feature adaptation and paper-trick patching, including mHC and hyper-connection cases, to `algorithm-agent`
@@ -65,7 +66,7 @@ entrypoints:
 
 - `/diagnose` for analyze-only
 - `/fix` for diagnose + fix workflow
-- `/migrate` for migration routing and specialist handoff
+- `/migrate` for migration routing and, when needed, post-migration readiness handoff
 
 Route from those commands into the right specialist skill instead of asking the
 user to choose a specialist skill up front when the top-level intent already
