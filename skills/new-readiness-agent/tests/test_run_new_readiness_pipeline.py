@@ -18,14 +18,26 @@ def run_pipeline(*args: str, cwd: Path) -> subprocess.CompletedProcess[str]:
     )
 
 
-def test_pipeline_blocks_without_runtime_environment(tmp_path: Path):
+def stdout_payload(completed: subprocess.CompletedProcess[str]) -> dict:
+    return json.loads(completed.stdout)
+
+
+def field_options(confirmation_form: dict, field_name: str) -> list[str]:
+    for group in confirmation_form.get("groups", []):
+        for field in group.get("fields", []):
+            if field.get("field") == field_name:
+                return [str(option.get("value")) for option in field.get("options", [])]
+    return []
+
+
+def test_pipeline_requires_confirmation_before_final_verdict(tmp_path: Path):
     workspace = tmp_path / "workspace"
     workspace.mkdir()
     (workspace / "infer.py").write_text("print('infer')\n", encoding="utf-8")
     (workspace / "model").mkdir()
     output_dir = tmp_path / "out"
 
-    run_pipeline(
+    completed = run_pipeline(
         "--working-dir",
         str(workspace),
         "--output-dir",
@@ -42,8 +54,14 @@ def test_pipeline_blocks_without_runtime_environment(tmp_path: Path):
     )
 
     verdict = json.loads((output_dir / "meta" / "readiness-verdict.json").read_text(encoding="utf-8"))
-    assert verdict["status"] == "BLOCKED"
+    summary = stdout_payload(completed)
+    assert verdict["status"] == "NEEDS_CONFIRMATION"
+    assert verdict["phase"] == "awaiting_confirmation"
+    assert verdict["confirmation_required"] is True
     assert verdict["can_run"] is False
+    assert "framework" in verdict["pending_confirmation_fields"]
+    assert summary["confirmation_required"] is True
+    assert "framework" in summary["pending_confirmation_fields"]
     assert (workspace / "runs" / "latest" / "new-readiness-agent" / "workspace-readiness.lock.json").exists()
 
 
@@ -100,6 +118,33 @@ def test_pipeline_warns_but_can_run_and_writes_latest_cache(tmp_path: Path, fake
     assert "groups" in confirmation["confirmation_form"]
 
 
+def test_pipeline_offers_catalog_options_when_workspace_has_no_runtime_evidence(tmp_path: Path):
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    output_dir = tmp_path / "out"
+
+    run_pipeline(
+        "--working-dir",
+        str(workspace),
+        "--output-dir",
+        str(output_dir),
+        cwd=workspace,
+    )
+
+    verdict = json.loads((output_dir / "meta" / "readiness-verdict.json").read_text(encoding="utf-8"))
+    confirmation_form = verdict["confirmation_form"]
+
+    assert verdict["status"] == "NEEDS_CONFIRMATION"
+    assert "training" in field_options(confirmation_form, "target")
+    assert "inference" in field_options(confirmation_form, "target")
+    assert "python" in field_options(confirmation_form, "launcher")
+    assert "torchrun" in field_options(confirmation_form, "launcher")
+    assert "llamafactory-cli" in field_options(confirmation_form, "launcher")
+    assert "mindspore" in field_options(confirmation_form, "framework")
+    assert "pta" in field_options(confirmation_form, "framework")
+    assert "__unknown__" in field_options(confirmation_form, "framework")
+
+
 def test_pipeline_detects_llamafactory_launcher_from_explicit_command(tmp_path: Path, fake_selected_python: Path):
     workspace = tmp_path / "workspace"
     workspace.mkdir()
@@ -131,6 +176,7 @@ def test_pipeline_detects_llamafactory_launcher_from_explicit_command(tmp_path: 
     )
 
     verdict = json.loads((output_dir / "meta" / "readiness-verdict.json").read_text(encoding="utf-8"))
+    assert verdict["status"] == "NEEDS_CONFIRMATION"
     assert verdict["launcher"]["value"] == "llamafactory-cli"
     assert verdict["evidence_summary"]["uses_llamafactory"] is True
 
@@ -154,6 +200,8 @@ def test_repeated_run_refreshes_latest_run_ref(tmp_path: Path, fake_selected_pyt
         "inference",
         "--framework-hint",
         "pta",
+        "--launcher-hint",
+        "python",
         "--selected-python",
         str(fake_selected_python),
         "--entry-script",
@@ -180,6 +228,8 @@ def test_repeated_run_refreshes_latest_run_ref(tmp_path: Path, fake_selected_pyt
         "inference",
         "--framework-hint",
         "pta",
+        "--launcher-hint",
+        "python",
         "--selected-python",
         str(fake_selected_python),
         "--entry-script",

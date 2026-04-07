@@ -16,7 +16,7 @@ def now_utc_iso() -> str:
 def shared_status(verdict_status: str) -> str:
     if verdict_status == "READY":
         return "success"
-    if verdict_status == "WARN":
+    if verdict_status in {"WARN", "NEEDS_CONFIRMATION"}:
         return "partial"
     return "failed"
 
@@ -113,11 +113,13 @@ def build_report_envelope(
 
 def render_markdown(report: Dict[str, object], lock_ref: str, form_ref: str) -> str:
     checks = report.get("checks") if isinstance(report.get("checks"), list) else []
+    pending_fields = report.get("pending_confirmation_fields") if isinstance(report.get("pending_confirmation_fields"), list) else []
     lines = [
         "# New Readiness Report",
         "",
         "## Summary",
         "",
+        f"- phase: `{report.get('phase')}`",
         f"- status: `{report.get('status')}`",
         f"- can_run: `{str(report.get('can_run')).lower()}`",
         f"- target: `{report.get('target')}`",
@@ -136,6 +138,12 @@ def render_markdown(report: Dict[str, object], lock_ref: str, form_ref: str) -> 
         "- near-launch probes only",
         "- no environment mutation",
         "",
+        "## Confirm",
+        "",
+        f"- confirmation_required: `{str(report.get('confirmation_required')).lower()}`",
+        f"- pending_fields: `{', '.join(pending_fields) if pending_fields else 'none'}`",
+        f"- confirmation_form: `{form_ref}`",
+        "",
         "## Verify",
         "",
     ]
@@ -147,7 +155,6 @@ def render_markdown(report: Dict[str, object], lock_ref: str, form_ref: str) -> 
             "## Artifacts",
             "",
             f"- readiness_lock: `{lock_ref}`",
-            f"- confirmation_form: `{form_ref}`",
             "",
             "## Environment",
             "",
@@ -170,6 +177,7 @@ def render_markdown(report: Dict[str, object], lock_ref: str, form_ref: str) -> 
 def build_verdict(run_id: str, root: Path, state: Dict[str, object]) -> Dict[str, object]:
     profile = state["profile"]
     validation = state["validation"]
+    confirmation = state.get("confirmation") if isinstance(state.get("confirmation"), dict) else {}
     selected_env = profile.get("selected_environment") or {}
     launcher_candidate = profile.get("selected_launcher_candidate") or {}
 
@@ -177,7 +185,10 @@ def build_verdict(run_id: str, root: Path, state: Dict[str, object]) -> Dict[str
         "schema_version": "new-readiness-agent/0.1",
         "skill": "new-readiness-agent",
         "run_id": run_id,
+        "phase": "awaiting_confirmation" if validation["status"] == "NEEDS_CONFIRMATION" else "validated",
         "status": validation["status"],
+        "confirmation_required": bool(confirmation.get("required")),
+        "pending_confirmation_fields": list(confirmation.get("gate_pending_fields") or []),
         "can_run": validation["can_run"],
         "target": profile.get("target"),
         "summary": validation["summary"],
@@ -218,7 +229,10 @@ def build_workspace_lock(verdict: Dict[str, object]) -> Dict[str, object]:
     return {
         "schema_version": "new-readiness-lock/0.1",
         "skill": "new-readiness-agent",
+        "phase": verdict.get("phase"),
         "status": verdict.get("status"),
+        "confirmation_required": verdict.get("confirmation_required"),
+        "pending_confirmation_fields": verdict.get("pending_confirmation_fields"),
         "can_run": verdict.get("can_run"),
         "target": verdict.get("target"),
         "launcher": launcher.get("value"),

@@ -85,11 +85,16 @@ def main() -> int:
     print(
         json.dumps(
             {
+                "phase": verdict["phase"],
                 "status": verdict["status"],
+                "confirmation_required": verdict["confirmation_required"],
+                "pending_confirmation_fields": verdict["pending_confirmation_fields"],
                 "can_run": verdict["can_run"],
                 "target": verdict["target"],
                 "summary": verdict["summary"],
                 "output_dir": str(output_dir),
+                "confirmation_form_ref": "artifacts/confirmation-options.json",
+                "confirmation_form": verdict["confirmation_form"] if verdict["confirmation_required"] else None,
             },
             indent=2,
         )

@@ -77,6 +77,35 @@ RUNTIME_IMPORT_CANDIDATES = {
     "llamafactory",
     "deepspeed",
 }
+CATALOG_FIELD_OPTIONS = {
+    "target": [
+        ("training", "training"),
+        ("inference", "inference"),
+    ],
+    "launcher": [
+        ("python", "python"),
+        ("bash", "bash"),
+        ("torchrun", "torchrun"),
+        ("accelerate", "accelerate"),
+        ("deepspeed", "deepspeed"),
+        ("msrun", "msrun"),
+        ("llamafactory-cli", "llamafactory-cli"),
+        ("make", "make"),
+    ],
+    "framework": [
+        ("mindspore", "mindspore"),
+        ("pta", "pta"),
+        ("mixed", "mixed"),
+    ],
+}
+VALIDATION_GATE_FIELDS = (
+    "target",
+    "launcher",
+    "framework",
+    "selected_python",
+    "selected_env_root",
+    "entry_script",
+)
 PROBE_CODE = """
 import importlib.util
 import json
@@ -190,6 +219,16 @@ def choose_top_candidate(items: List[Dict[str, object]]) -> Optional[Dict[str, o
         return None
     items.sort(key=lambda item: float(item.get("confidence") or 0.0), reverse=True)
     return items[0]
+
+
+def merge_catalog_candidates(field_name: str, detected_candidates: List[Dict[str, object]]) -> List[Dict[str, object]]:
+    merged = list(detected_candidates)
+    seen_values = {item.get("value") for item in detected_candidates}
+    for value, label in CATALOG_FIELD_OPTIONS.get(field_name, []):
+        if value in seen_values:
+            continue
+        merged.append(candidate(value, label, "catalog", 0.18))
+    return dedupe_candidates(merged)
 
 
 def parse_config_values(text: str, keys: Tuple[str, ...]) -> List[str]:
@@ -693,23 +732,25 @@ def choose_value(
     field_candidates: List[Dict[str, object]],
 ) -> Dict[str, object]:
     cached_fields = cached_confirmation.get("confirmed_fields") if isinstance(cached_confirmation.get("confirmed_fields"), dict) else {}
-    cached_value = None
+    cached_item = None
     if isinstance(cached_fields, dict):
-        cached_item = cached_fields.get(field_name)
-        if isinstance(cached_item, dict):
-            cached_value = cached_item.get("value")
+        probe_item = cached_fields.get(field_name)
+        if isinstance(probe_item, dict):
+            cached_item = probe_item
 
     if explicit_value not in {None, ""}:
         return {"value": explicit_value, "source": "explicit_input", "confirmed": True}
-    if cached_value not in {None, ""}:
-        return {"value": cached_value, "source": "cached_confirmation", "confirmed": True}
+    if isinstance(cached_item, dict) and cached_item.get("value") not in {None, ""}:
+        return {
+            "value": cached_item.get("value"),
+            "source": "cached_confirmation",
+            "confirmed": bool(cached_item.get("confirmed", False)),
+        }
 
     top = choose_top_candidate(list(field_candidates))
     if not top:
         return {"value": None, "source": "missing", "confirmed": False}
-    confidence = float(top.get("confidence") or 0.0)
-    ambiguous = len(field_candidates) > 1 and confidence < 0.9
-    return {"value": top.get("value"), "source": "auto_recommended", "confirmed": not ambiguous and confidence >= 0.8}
+    return {"value": top.get("value"), "source": "auto_recommended", "confirmed": False}
 
 
 def choose_environment(
@@ -736,12 +777,16 @@ def choose_environment(
     cached_python = cached_fields.get("selected_python") if isinstance(cached_fields, dict) else None
     cached_env_value = cached_env.get("value") if isinstance(cached_env, dict) else None
     cached_python_value = cached_python.get("value") if isinstance(cached_python, dict) else None
+    cached_confirmed = bool(
+        (isinstance(cached_env, dict) and cached_env.get("confirmed", False))
+        and (isinstance(cached_python, dict) and cached_python.get("confirmed", False))
+    )
     if cached_env_value or cached_python_value:
         for candidate_item in candidates:
             if cached_env_value and candidate_item.get("env_root") == cached_env_value:
-                return {"candidate": candidate_item, "source": "cached_confirmation", "confirmed": True}
+                return {"candidate": candidate_item, "source": "cached_confirmation", "confirmed": cached_confirmed}
             if cached_python_value and candidate_item.get("python_path") == cached_python_value:
-                return {"candidate": candidate_item, "source": "cached_confirmation", "confirmed": True}
+                return {"candidate": candidate_item, "source": "cached_confirmation", "confirmed": cached_confirmed}
         synthetic_candidate = {
             "id": "env-cached",
             "kind": "cached-confirmation",
@@ -755,14 +800,12 @@ def choose_environment(
             "recommended": True,
         }
         candidates.insert(0, synthetic_candidate)
-        return {"candidate": synthetic_candidate, "source": "cached_confirmation", "confirmed": True}
+        return {"candidate": synthetic_candidate, "source": "cached_confirmation", "confirmed": cached_confirmed}
 
     recommended = choose_top_candidate(list(candidates))
     if not recommended:
         return {"candidate": None, "source": "missing", "confirmed": False}
-    confidence = float(recommended.get("confidence") or 0.0)
-    ambiguous = len(candidates) > 1 and confidence < 0.9
-    return {"candidate": recommended, "source": "auto_recommended", "confirmed": not ambiguous and confidence >= 0.82}
+    return {"candidate": recommended, "source": "auto_recommended", "confirmed": False}
 
 
 def build_required_packages(
@@ -986,6 +1029,62 @@ def analyze_workspace(root: Path, args: object) -> Dict[str, object]:
     }
 
 
+def build_confirmation_state(profile: Dict[str, object]) -> Dict[str, object]:
+    confirmed_fields = profile.get("confirmed_fields") if isinstance(profile.get("confirmed_fields"), dict) else {}
+    pending_fields: List[str] = []
+    recommended_fields: List[str] = []
+    unresolved_fields: List[str] = []
+    gate_pending_fields: List[str] = []
+
+    for name, item in confirmed_fields.items():
+        if not isinstance(item, dict):
+            continue
+        if item.get("confirmed", False):
+            continue
+        pending_fields.append(name)
+        if item.get("value") in {None, ""}:
+            unresolved_fields.append(name)
+        else:
+            recommended_fields.append(name)
+
+    for field_name in VALIDATION_GATE_FIELDS:
+        item = confirmed_fields.get(field_name)
+        if not isinstance(item, dict) or not item.get("confirmed", False):
+            gate_pending_fields.append(field_name)
+
+    return {
+        "required": bool(gate_pending_fields),
+        "ready_for_validation": not gate_pending_fields,
+        "pending_fields": pending_fields,
+        "gate_pending_fields": gate_pending_fields,
+        "recommended_fields": recommended_fields,
+        "unresolved_fields": unresolved_fields,
+    }
+
+
+def build_runtime_environment_field(
+    candidates: List[Dict[str, object]],
+    selected_candidate: Optional[Dict[str, object]],
+) -> Dict[str, object]:
+    return {
+        "field": "runtime_environment",
+        "label": "Python / Environment",
+        "recommended_value": selected_candidate.get("id") if selected_candidate else None,
+        "allow_free_text": True,
+        "options": [
+            {
+                "value": item.get("id"),
+                "label": item.get("label"),
+                "confidence": item.get("confidence"),
+                "selection_source": item.get("selection_source"),
+                "python_path": item.get("python_path"),
+                "env_root": item.get("env_root"),
+            }
+            for item in candidates
+        ] + [{"value": "__unknown__", "label": "unknown / not sure", "confidence": 0.0, "selection_source": "manual"}],
+    }
+
+
 def finalize_profile(scan: Dict[str, object], root: Path, args: object) -> Dict[str, object]:
     cached_confirmation = load_cached_confirmation(root)
 
@@ -1042,6 +1141,9 @@ def finalize_profile(scan: Dict[str, object], root: Path, args: object) -> Dict[
         },
     }
 
+    target_form_candidates = merge_catalog_candidates("target", list(scan["target_candidates"]))
+    launcher_form_candidates = merge_catalog_candidates("launcher", list(scan["launcher_candidates"]))
+    framework_form_candidates = merge_catalog_candidates("framework", list(scan["framework_candidates"]))
     confirmation_form = {
         "schema_version": "new-readiness-agent/form/0.1",
         "mode": "single",
@@ -1050,32 +1152,16 @@ def finalize_profile(scan: Dict[str, object], root: Path, args: object) -> Dict[
                 "id": "runtime-shape",
                 "label": "Target / Launcher / Framework",
                 "fields": [
-                    build_confirmation_field("target", "Target", list(scan["target_candidates"]), recommended_value=target_choice["value"]),
-                    build_confirmation_field("launcher", "Launcher", list(scan["launcher_candidates"]), recommended_value=launcher_choice["value"]),
-                    build_confirmation_field("framework", "Framework", list(scan["framework_candidates"]), recommended_value=framework_choice["value"]),
+                    build_confirmation_field("target", "Target", target_form_candidates, recommended_value=target_choice["value"]),
+                    build_confirmation_field("launcher", "Launcher", launcher_form_candidates, recommended_value=launcher_choice["value"]),
+                    build_confirmation_field("framework", "Framework", framework_form_candidates, recommended_value=framework_choice["value"]),
                 ],
             },
             {
                 "id": "runtime-env",
                 "label": "Python / Environment / CANN",
                 "fields": [
-                    {
-                        "field": "runtime_environment",
-                        "label": "Python / Environment",
-                        "recommended_value": selected_environment_candidate.get("id") if selected_environment_candidate else None,
-                        "allow_free_text": True,
-                        "options": [
-                            {
-                                "value": item.get("id"),
-                                "label": item.get("label"),
-                                "confidence": item.get("confidence"),
-                                "selection_source": item.get("selection_source"),
-                                "python_path": item.get("python_path"),
-                                "env_root": item.get("env_root"),
-                            }
-                            for item in scan["environment"]["candidates"]
-                        ] + [{"value": "__unknown__", "label": "unknown / not sure", "confidence": 0.0, "selection_source": "manual"}],
-                    },
+                    build_runtime_environment_field(list(scan["environment"]["candidates"]), selected_environment_candidate),
                     build_confirmation_field("cann_path", "CANN / set_env.sh", list(scan["cann"]["candidates"]), recommended_value=cann_choice["value"]),
                 ],
             },
@@ -1100,6 +1186,7 @@ def finalize_profile(scan: Dict[str, object], root: Path, args: object) -> Dict[
         },
     }
 
+    confirmation_state = build_confirmation_state({"confirmed_fields": confirmed_fields})
     return {
         "target": target_choice["value"],
         "framework": framework_choice["value"],
@@ -1120,6 +1207,114 @@ def finalize_profile(scan: Dict[str, object], root: Path, args: object) -> Dict[
         "uses_llamafactory": uses_llamafactory,
         "selected_launcher_candidate": selected_launcher_candidate,
         "cached_confirmation": cached_confirmation,
+        "confirmation_state": confirmation_state,
+    }
+
+
+def build_pending_validation(scan: Dict[str, object], profile: Dict[str, object], root: Path) -> Dict[str, object]:
+    checks: List[Dict[str, object]] = []
+    selected_env = profile.get("selected_environment")
+    confirmation_state = profile.get("confirmation_state") if isinstance(profile.get("confirmation_state"), dict) else {}
+    confirmed_fields = profile.get("confirmed_fields") if isinstance(profile.get("confirmed_fields"), dict) else {}
+
+    def pending_check(field_name: str, check_id: str, *, fallback_label: str) -> None:
+        item = confirmed_fields.get(field_name) if isinstance(confirmed_fields.get(field_name), dict) else {}
+        value = item.get("value")
+        confirmed = bool(item.get("confirmed", False))
+        if confirmed and value not in {None, ""}:
+            checks.append(make_check(check_id, "ok", f"{fallback_label} confirmed: {value}"))
+            return
+        if value in {None, ""}:
+            checks.append(make_check(check_id, "warn", f"{fallback_label} still needs a user selection."))
+            return
+        checks.append(make_check(check_id, "warn", f"{fallback_label} recommendation is ready, but still needs user confirmation: {value}"))
+
+    pending_check("target", "target-selection", fallback_label="target")
+    pending_check("launcher", "launcher-selection", fallback_label="launcher")
+    pending_check("framework", "framework-selection", fallback_label="framework")
+    pending_check("entry_script", "workspace-entry_script-path", fallback_label="entry script")
+
+    if selected_env:
+        env_status = "ok" if confirmed_fields.get("selected_python", {}).get("confirmed") and confirmed_fields.get("selected_env_root", {}).get("confirmed") else "warn"
+        summary = "runtime environment is confirmed" if env_status == "ok" else "runtime environment recommendation is ready, but still needs user confirmation"
+        checks.append(
+            make_check(
+                "python-environment",
+                env_status,
+                summary,
+                evidence=[str(selected_env.get("python_path") or selected_env.get("env_root") or "")],
+            )
+        )
+    else:
+        checks.append(make_check("python-environment", "warn", "runtime environment is still unresolved"))
+
+    cann_input = profile.get("cann_path")
+    system_layer = detect_ascend_runtime({"cann_path": cann_input})
+    probe_env, probe_env_source, probe_env_error = resolve_runtime_environment(system_layer)
+    cann_version_info = detect_cann_version(cann_input, system_layer.get("ascend_env_script_path"), probe_env)
+    checks.append(
+        make_check(
+            "ascend-runtime",
+            "ok" if (system_layer.get("ascend_env_active") or system_layer.get("ascend_env_script_present") or cann_input) else "warn",
+            "Ascend runtime evidence is available." if (system_layer.get("ascend_env_active") or system_layer.get("ascend_env_script_present") or cann_input) else "Ascend runtime evidence is weak or unresolved.",
+            evidence=[str(item) for item in (system_layer.get("ascend_env_candidate_paths") or [])[:3]],
+            selection_source=probe_env_source,
+            error=probe_env_error,
+        )
+    )
+    checks.append(
+        make_check(
+            "cann-version",
+            "ok" if cann_version_info.get("cann_version") else "warn",
+            f"CANN version detected: {cann_version_info.get('cann_version')}" if cann_version_info.get("cann_version") else "CANN version is unresolved.",
+            evidence=[str(cann_version_info.get("cann_version_file") or "")],
+        )
+    )
+
+    gate_pending = list(confirmation_state.get("gate_pending_fields") or [])
+    checks.append(
+        make_check(
+            "confirmation-needed",
+            "warn",
+            f"final readiness verification is waiting for user confirmation of: {', '.join(gate_pending)}",
+        )
+    )
+    checks.append(
+        make_check(
+            "runtime-smoke",
+            "skipped",
+            "near-launch readiness validation is deferred until the single confirmation form is completed",
+        )
+    )
+
+    warnings = [item["summary"] for item in checks if item["status"] == "warn"]
+    evidence_summary = {
+        "target_candidates": scan.get("target_candidates"),
+        "framework_candidates": scan.get("framework_candidates"),
+        "launcher_candidates": scan.get("launcher_candidates"),
+        "selected_runtime_environment": selected_env,
+        "cann_version": cann_version_info.get("cann_version"),
+        "cann_source": cann_version_info.get("cann_version_source"),
+        "uses_llamafactory": profile.get("uses_llamafactory"),
+        "required_packages": profile.get("required_packages"),
+        "package_versions": {},
+        "package_errors": {},
+        "package_version_probe_error": None,
+        "compatibility": None,
+    }
+    return {
+        "status": "NEEDS_CONFIRMATION",
+        "can_run": False,
+        "summary": "Workspace scan is complete, but the final readiness verdict is waiting for your confirmation of the unified runtime form.",
+        "next_action": "Review the single confirmation form, choose the intended runtime values, and rerun new-readiness-agent with those confirmed selections.",
+        "checks": checks,
+        "missing_items": [],
+        "warnings": warnings,
+        "evidence_summary": evidence_summary,
+        "probe_environment_source": probe_env_source,
+        "probe_environment_error": probe_env_error,
+        "cann_version_info": cann_version_info,
+        "system_layer": system_layer,
     }
 
 
@@ -1233,9 +1428,11 @@ def validate_profile(scan: Dict[str, object], profile: Dict[str, object], root: 
 def build_run_state(root: Path, args: object) -> Dict[str, object]:
     scan = analyze_workspace(root, args)
     profile = finalize_profile(scan, root, args)
-    validation = validate_profile(scan, profile, root)
+    confirmation = profile.get("confirmation_state") if isinstance(profile.get("confirmation_state"), dict) else build_confirmation_state(profile)
+    validation = validate_profile(scan, profile, root) if confirmation.get("ready_for_validation") else build_pending_validation(scan, profile, root)
     return {
         "scan": scan,
         "profile": profile,
+        "confirmation": confirmation,
         "validation": validation,
     }

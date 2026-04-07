@@ -50,6 +50,8 @@ Do not use this skill for:
   existence, `--help` probes, config readability, and command reconstruction.
 - Build a single confirmation form after the initial scan instead of interrupting
   the user with many small prompts.
+- Never emit a final `WARN` or `BLOCKED` verdict before the single confirmation
+  form has been shown to the user at least once.
 - Preserve both detected values and final selected values in artifacts.
 - Refresh the workspace latest cache on every run.
 
@@ -140,6 +142,10 @@ command path.
 Always emit a single confirmation form that includes grouped candidate lists,
 `unknown / not sure`, and free-text overrides.
 
+If the first run still needs user choices, stop at a confirmation-pending result,
+show the grouped form, collect the user's selections, and only then rerun the
+pipeline to produce the final `READY`, `WARN`, or `BLOCKED` verdict.
+
 ## Stage 3. Snapshot Builder
 
 Write reusable machine-readable artifacts for this run and for the workspace
@@ -164,11 +170,18 @@ Workspace latest cache must include:
 
 ## Stage 4. Report Builder
 
-Return one final readiness result:
+Return one readiness result for the current phase:
 
+- `NEEDS_CONFIRMATION`
 - `READY`
 - `WARN`
 - `BLOCKED`
+
+`NEEDS_CONFIRMATION` means:
+
+- the workspace scan is finished
+- the unified confirmation form is ready
+- final readiness validation must wait for user selections
 
 `READY` requires:
 
@@ -206,4 +219,3 @@ Use these scripts:
 - `scripts/run_new_readiness_pipeline.py` as the only public entrypoint
 - `scripts/new_readiness_core.py` for detection and validation
 - `scripts/new_readiness_report.py` for report and cache artifacts
-

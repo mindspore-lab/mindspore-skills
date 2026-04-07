@@ -7,7 +7,10 @@
   "required": [
     "schema_version",
     "skill",
+    "phase",
     "status",
+    "confirmation_required",
+    "pending_confirmation_fields",
     "can_run",
     "target",
     "summary",
@@ -35,9 +38,22 @@
       "type": "string",
       "const": "new-readiness-agent"
     },
+    "phase": {
+      "type": "string",
+      "enum": ["awaiting_confirmation", "validated"]
+    },
     "status": {
       "type": "string",
-      "enum": ["READY", "WARN", "BLOCKED"]
+      "enum": ["NEEDS_CONFIRMATION", "READY", "WARN", "BLOCKED"]
+    },
+    "confirmation_required": {
+      "type": "boolean"
+    },
+    "pending_confirmation_fields": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
     },
     "can_run": {
       "type": "boolean"
