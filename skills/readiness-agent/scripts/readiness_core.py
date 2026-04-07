@@ -47,7 +47,7 @@ EXAMPLE_RECIPES = [
         "model_hub_id": "Qwen/Qwen3-0.6B",
         "dataset_hub_id": "karthiksagarn/astro_horoscope",
         "entry_script": "train.py",
-        "template_path": Path(__file__).resolve().parents[1] / "examples" / "qwen3_0_6b_training_example.py",
+        "template_path": Path(__file__).resolve().parents[1] / "templates" / "qwen3_0_6b_training_example.py",
     }
 ]
 PROBE_CODE = """

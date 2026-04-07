@@ -355,7 +355,7 @@ def test_build_fix_actions_adds_example_scaffold_when_recipe_applies(tmp_path: P
     target = {
         "working_dir": str(tmp_path),
         "entry_script": str(tmp_path / "train.py"),
-        "example_template_path": str((Path(__file__).resolve().parents[1] / "examples" / "qwen3_0_6b_training_example.py").resolve()),
+        "example_template_path": str((Path(__file__).resolve().parents[1] / "templates" / "qwen3_0_6b_training_example.py").resolve()),
     }
     closure = {
         "layers": {
