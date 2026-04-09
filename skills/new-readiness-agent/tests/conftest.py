@@ -15,6 +15,11 @@ import subprocess
 import sys
 
 REAL_PYTHON = {real_python}
+VERSION_OVERRIDES = {{
+    "torch": "2.9.0",
+    "torch_npu": "2.9.0",
+    "mindspore": "2.6.0",
+}}
 
 if len(sys.argv) >= 3 and sys.argv[1] == "-c":
     code = sys.argv[2]
@@ -30,7 +35,7 @@ if len(sys.argv) >= 3 and sys.argv[1] == "-c":
             raise SystemExit(0)
         if mode == "package_versions":
             packages = payload.get("packages", [])
-            print(json.dumps({{"versions": {{name: "1.0.0" for name in packages}}, "errors": {{}}}}))
+            print(json.dumps({{"versions": {{name: VERSION_OVERRIDES.get(name, "1.0.0") for name in packages}}, "errors": {{}}}}))
             raise SystemExit(0)
         if mode == "framework_smoke":
             print(json.dumps({{"success": True, "details": ["fake framework smoke ok"], "error": None}}))

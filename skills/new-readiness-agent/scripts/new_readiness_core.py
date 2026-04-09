@@ -208,7 +208,15 @@ payload = json.loads(sys.argv[2])
 
 if mode == "import":
     packages = payload.get("packages", [])
-    print(json.dumps({name: importlib.util.find_spec(name) is not None for name in packages}))
+    result = {"imports": {}, "errors": {}}
+    for name in packages:
+        try:
+            __import__(name)
+            result["imports"][name] = True
+        except Exception as exc:
+            result["imports"][name] = False
+            result["errors"][name] = f"{type(exc).__name__}: {exc}"
+    print(json.dumps(result))
 elif mode == "package_versions":
     try:
         from importlib import metadata as importlib_metadata
@@ -1115,15 +1123,19 @@ def run_json_probe_with_python(
     return result, None
 
 
-def probe_imports(packages: List[str], python_path: Optional[str], probe_env: Optional[Dict[str, str]]) -> Tuple[Dict[str, bool], Optional[str]]:
+def probe_imports(packages: List[str], python_path: Optional[str], probe_env: Optional[Dict[str, str]]) -> Tuple[Dict[str, bool], Dict[str, str], Optional[str]]:
     if not packages:
-        return {}, None
+        return {}, {}, None
     if not python_path:
-        return {package: False for package in packages}, "selected python is unavailable"
+        return {package: False for package in packages}, {}, "selected python is unavailable"
     result, error = run_json_probe_with_python(Path(python_path), "import", {"packages": packages}, probe_env)
     if error:
-        return {package: False for package in packages}, error
-    return {package: bool(result.get(package)) for package in packages}, None
+        return {package: False for package in packages}, {}, error
+    imports = result.get("imports") if isinstance(result.get("imports"), dict) else result
+    errors = result.get("errors") if isinstance(result.get("errors"), dict) else {}
+    normalized_imports = {package: bool(imports.get(package)) for package in packages}
+    normalized_errors = {str(key): str(value) for key, value in errors.items()}
+    return normalized_imports, normalized_errors, None
 
 
 def probe_package_versions(packages: List[str], python_path: Optional[str], probe_env: Optional[Dict[str, str]]) -> Tuple[Dict[str, Optional[str]], Dict[str, str], Optional[str]]:
@@ -1207,6 +1219,17 @@ def summarize_framework_compatibility(compatibility: Dict[str, object]) -> Tuple
         "reason": compatibility.get("reason"),
     }
     return summary or f"framework compatibility status: {status}", evidence, details
+
+
+def summarize_import_failures(package_names: List[str], import_errors: Dict[str, str]) -> str:
+    details = []
+    for name in package_names:
+        error = str(import_errors.get(name) or "").strip()
+        if error:
+            details.append(f"{name} ({error})")
+        else:
+            details.append(name)
+    return ", ".join(details)
 
 
 def executable_exists(command_name: str) -> bool:
@@ -1631,10 +1654,16 @@ def build_pending_validation(scan: Dict[str, object], profile: Dict[str, object]
         "hf_cache_layout": ((scan.get("asset_catalog") or {}).get("cache_layout") if isinstance(scan.get("asset_catalog"), dict) else {}),
         "cann_version": cann_version_info.get("cann_version"),
         "cann_source": cann_version_info.get("cann_version_source"),
+        "cann_path": profile.get("cann_path") or system_layer.get("cann_path_input"),
+        "ascend_env_script_path": system_layer.get("ascend_env_script_path"),
+        "ascend_env_candidate_paths": system_layer.get("ascend_env_candidate_paths"),
+        "ascend_env_selection_source": system_layer.get("ascend_env_selection_source"),
+        "cann_version_file": cann_version_info.get("cann_version_file"),
         "uses_llamafactory": profile.get("uses_llamafactory"),
         "required_packages": profile.get("required_packages"),
         "package_versions": {},
         "package_errors": {},
+        "import_errors": {},
         "package_version_probe_error": None,
         "compatibility": None,
     }
@@ -1677,13 +1706,41 @@ def validate_profile(scan: Dict[str, object], profile: Dict[str, object], root: 
     checks.append(make_check("cann-version", "ok" if cann_version_info.get("cann_version") else "warn", f"CANN version detected: {cann_version_info.get('cann_version')}" if cann_version_info.get("cann_version") else "CANN version is unresolved.", evidence=[str(cann_version_info.get("cann_version_file") or "")]))
 
     framework_packages = FRAMEWORK_PACKAGES.get(str(profile.get("framework") or ""), [])
-    import_probes, import_error = probe_imports(profile.get("required_packages") or [], selected_python, probe_env)
+    import_probes, import_errors, import_error = probe_imports(profile.get("required_packages") or [], selected_python, probe_env)
     package_versions, package_errors, version_error = probe_package_versions(profile.get("required_packages") or [], selected_python, probe_env)
     missing_framework_imports = [name for name in framework_packages if not import_probes.get(name)]
     missing_runtime_imports = [name for name in (profile.get("runtime_imports") or []) if not import_probes.get(name)]
 
-    checks.append(make_check("framework-importability", "ok" if not missing_framework_imports and framework_packages else ("warn" if not framework_packages else "block"), "framework packages are importable" if framework_packages and not missing_framework_imports else ("framework path has no package probe" if not framework_packages else f"missing framework imports: {', '.join(missing_framework_imports)}"), evidence=[f"{name}={import_probes.get(name)}" for name in framework_packages], probe_error=import_error))
-    checks.append(make_check("runtime-dependencies", "ok" if not missing_runtime_imports else "block", "runtime imports are available" if not missing_runtime_imports else f"missing runtime imports: {', '.join(missing_runtime_imports)}", evidence=[f"{name}={import_probes.get(name)}" for name in (profile.get("runtime_imports") or [])], probe_error=import_error))
+    framework_summary = "framework packages are importable"
+    if not framework_packages:
+        framework_summary = "framework path has no package probe"
+    elif missing_framework_imports:
+        framework_summary = f"missing framework imports: {summarize_import_failures(missing_framework_imports, import_errors)}"
+
+    runtime_summary = "runtime imports are available"
+    if missing_runtime_imports:
+        runtime_summary = f"missing runtime imports: {summarize_import_failures(missing_runtime_imports, import_errors)}"
+
+    checks.append(
+        make_check(
+            "framework-importability",
+            "ok" if not missing_framework_imports and framework_packages else ("warn" if not framework_packages else "block"),
+            framework_summary,
+            evidence=[f"{name}={import_probes.get(name)}" for name in framework_packages] + [f"{name}: {import_errors.get(name)}" for name in missing_framework_imports if import_errors.get(name)],
+            probe_error=import_error,
+            import_errors={name: import_errors.get(name) for name in missing_framework_imports if import_errors.get(name)},
+        )
+    )
+    checks.append(
+        make_check(
+            "runtime-dependencies",
+            "ok" if not missing_runtime_imports else "block",
+            runtime_summary,
+            evidence=[f"{name}={import_probes.get(name)}" for name in (profile.get("runtime_imports") or [])] + [f"{name}: {import_errors.get(name)}" for name in missing_runtime_imports if import_errors.get(name)],
+            probe_error=import_error,
+            import_errors={name: import_errors.get(name) for name in missing_runtime_imports if import_errors.get(name)},
+        )
+    )
 
     launcher_status, launcher_summary = launcher_ready(str(profile.get("launcher") or ""), selected_env, import_probes)
     checks.append(make_check("launcher-readiness", launcher_status, launcher_summary))
@@ -1707,6 +1764,8 @@ def validate_profile(scan: Dict[str, object], profile: Dict[str, object], root: 
         compat_summary, compat_evidence, compat_details = summarize_framework_compatibility(compatibility)
         if compat_status == "compatible":
             checks.append(make_check("framework-compatibility", "ok", compat_summary, evidence=compat_evidence, details=compat_details))
+        elif compat_status == "incompatible":
+            checks.append(make_check("framework-compatibility", "block", compat_summary, evidence=compat_evidence, details=compat_details))
         elif compat_status:
             checks.append(make_check("framework-compatibility", "warn", compat_summary, evidence=compat_evidence, details=compat_details))
 
@@ -1720,6 +1779,7 @@ def validate_profile(scan: Dict[str, object], profile: Dict[str, object], root: 
         "python-environment",
         "framework-selection",
         "framework-importability",
+        "framework-compatibility",
         "runtime-dependencies",
         "launcher-readiness",
         "workspace-entry-script",
@@ -1755,10 +1815,16 @@ def validate_profile(scan: Dict[str, object], profile: Dict[str, object], root: 
         "hf_cache_layout": ((scan.get("asset_catalog") or {}).get("cache_layout") if isinstance(scan.get("asset_catalog"), dict) else {}),
         "cann_version": cann_version_info.get("cann_version"),
         "cann_source": cann_version_info.get("cann_version_source"),
+        "cann_path": profile.get("cann_path") or system_layer.get("cann_path_input"),
+        "ascend_env_script_path": system_layer.get("ascend_env_script_path"),
+        "ascend_env_candidate_paths": system_layer.get("ascend_env_candidate_paths"),
+        "ascend_env_selection_source": system_layer.get("ascend_env_selection_source"),
+        "cann_version_file": cann_version_info.get("cann_version_file"),
         "uses_llamafactory": profile.get("uses_llamafactory"),
         "required_packages": profile.get("required_packages"),
         "package_versions": package_versions,
         "package_errors": package_errors,
+        "import_errors": import_errors,
         "package_version_probe_error": version_error,
         "compatibility": compatibility,
     }

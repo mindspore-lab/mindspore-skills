@@ -81,6 +81,10 @@ def build_env_snapshot(root: Path, verdict: Dict[str, object]) -> Dict[str, obje
         "torch_version": package_versions.get("torch"),
         "torch_npu_version": package_versions.get("torch_npu"),
         "cann_version": evidence_summary.get("cann_version"),
+        "cann_path": verdict.get("cann_path"),
+        "ascend_env_script_path": verdict.get("ascend_env_script_path"),
+        "cann_version_file": verdict.get("cann_version_file"),
+        "cann_candidate_paths": verdict.get("cann_candidate_paths"),
         "driver_version": None,
         "python_version": selected_runtime.get("python_version"),
         "compatibility": compatibility,
@@ -271,6 +275,9 @@ def render_markdown(report: Dict[str, object], artifact_refs: Dict[str, str]) ->
             "## Environment",
             "",
             f"- cann_version: `{(report.get('evidence_summary') or {}).get('cann_version')}`",
+            f"- cann_path: `{report.get('cann_path')}`",
+            f"- ascend_env_script_path: `{report.get('ascend_env_script_path')}`",
+            f"- cann_version_file: `{report.get('cann_version_file')}`",
             f"- torch_version: `{((report.get('evidence_summary') or {}).get('package_versions') or {}).get('torch')}`",
             f"- torch_npu_version: `{((report.get('evidence_summary') or {}).get('package_versions') or {}).get('torch_npu')}`",
             f"- mindspore_version: `{((report.get('evidence_summary') or {}).get('package_versions') or {}).get('mindspore')}`",
@@ -295,6 +302,9 @@ def build_verdict(run_id: str, root: Path, state: Dict[str, object]) -> Dict[str
     confirmation = state.get("confirmation") if isinstance(state.get("confirmation"), dict) else {}
     selected_env = profile.get("selected_environment") or {}
     launcher_candidate = profile.get("selected_launcher_candidate") or {}
+    system_layer = validation.get("system_layer") if isinstance(validation.get("system_layer"), dict) else {}
+    cann_version_info = validation.get("cann_version_info") if isinstance(validation.get("cann_version_info"), dict) else {}
+    resolved_cann_path = profile.get("cann_path") or system_layer.get("cann_path_input")
 
     return {
         "schema_version": "new-readiness-agent/0.1",
@@ -322,6 +332,10 @@ def build_verdict(run_id: str, root: Path, state: Dict[str, object]) -> Dict[str
         "assets": profile.get("assets"),
         "selected_python": selected_env.get("python_path"),
         "selected_env_root": selected_env.get("env_root"),
+        "cann_path": resolved_cann_path,
+        "ascend_env_script_path": system_layer.get("ascend_env_script_path"),
+        "cann_version_file": cann_version_info.get("cann_version_file"),
+        "cann_candidate_paths": system_layer.get("ascend_env_candidate_paths"),
         "environment_candidates": state["scan"]["environment"]["candidates"],
         "checks": validation["checks"],
         "confirmed_fields": profile["confirmed_fields"],
@@ -351,6 +365,10 @@ def build_workspace_lock(verdict: Dict[str, object]) -> Dict[str, object]:
         "framework": framework.get("value"),
         "backend": "ascend-npu",
         "cann": evidence_summary.get("cann_version"),
+        "cann_path": verdict.get("cann_path"),
+        "ascend_env_script_path": verdict.get("ascend_env_script_path"),
+        "cann_version_file": verdict.get("cann_version_file"),
+        "cann_candidate_paths": verdict.get("cann_candidate_paths"),
         "selected_python": verdict.get("selected_python"),
         "selected_env_root": verdict.get("selected_env_root"),
         "entry_script": (confirmed_fields.get("entry_script") or {}).get("value"),

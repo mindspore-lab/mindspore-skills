@@ -1,4 +1,5 @@
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -42,6 +43,63 @@ def check_by_id(verdict: dict, check_id: str) -> dict:
         if item.get("id") == check_id:
             return item
     raise AssertionError(f"missing check: {check_id}")
+
+
+def make_fake_selected_python_with_import_error(tmp_path: Path, failing_package: str, error_message: str) -> Path:
+    real_python = json.dumps(sys.executable)
+    script = tmp_path / "fake-import-error-python.py"
+    script.write_text(
+        f"""#!/usr/bin/env python3
+import json
+import subprocess
+import sys
+
+REAL_PYTHON = {real_python}
+FAILING_PACKAGE = {json.dumps(failing_package)}
+ERROR_MESSAGE = {json.dumps(error_message)}
+VERSION_OVERRIDES = {{
+    "torch": "2.9.0",
+    "torch_npu": "2.9.0",
+    "mindspore": "2.6.0",
+}}
+
+if len(sys.argv) >= 3 and sys.argv[1] == "-c":
+    code = sys.argv[2]
+    if "platform.python_version" in code and "version_info" in code:
+        print(json.dumps({{"version_info": [3, 10, 20], "version": "3.10.20"}}))
+        raise SystemExit(0)
+    if "importlib.util" in code and len(sys.argv) >= 5:
+        mode = sys.argv[3]
+        payload = json.loads(sys.argv[4])
+        if mode == "import":
+            packages = payload.get("packages", [])
+            result = {{"imports": {{}}, "errors": {{}}}}
+            for name in packages:
+                if name == FAILING_PACKAGE:
+                    result["imports"][name] = False
+                    result["errors"][name] = ERROR_MESSAGE
+                else:
+                    result["imports"][name] = True
+            print(json.dumps(result))
+            raise SystemExit(0)
+        if mode == "package_versions":
+            packages = payload.get("packages", [])
+            print(json.dumps({{"versions": {{name: VERSION_OVERRIDES.get(name, "1.0.0") for name in packages}}, "errors": {{}}}}))
+            raise SystemExit(0)
+    completed = subprocess.run([REAL_PYTHON, *sys.argv[1:]])
+    raise SystemExit(completed.returncode)
+
+completed = subprocess.run([REAL_PYTHON, *sys.argv[1:]])
+raise SystemExit(completed.returncode)
+""",
+        encoding="utf-8",
+    )
+    if os.name == "nt":
+        launcher = tmp_path / "fake-import-error-python.cmd"
+        launcher.write_text(f'@echo off\r\n"{sys.executable}" "%~dp0fake-import-error-python.py" %*\r\n', encoding="utf-8")
+        return launcher
+    script.chmod(script.stat().st_mode | 0o111)
+    return script
 
 
 def test_pipeline_requires_confirmation_before_final_verdict(tmp_path: Path):
@@ -92,7 +150,7 @@ def test_pipeline_requires_confirmation_before_final_verdict(tmp_path: Path):
     assert (workspace / "runs" / "latest" / "new-readiness-agent" / "workspace-readiness.lock.json").exists()
 
 
-def test_pipeline_warns_but_can_run_and_writes_latest_cache(tmp_path: Path, fake_selected_python: Path):
+def test_pipeline_writes_full_bundle_and_surfaces_cann_paths(tmp_path: Path, fake_selected_python: Path):
     workspace = tmp_path / "workspace"
     workspace.mkdir()
     (workspace / "train.py").write_text("import torch\nimport torch_npu\nfrom transformers import Trainer\n", encoding="utf-8")
@@ -140,8 +198,10 @@ def test_pipeline_warns_but_can_run_and_writes_latest_cache(tmp_path: Path, fake
     latest_lock = json.loads((latest_root / "workspace-readiness.lock.json").read_text(encoding="utf-8"))
     confirmation = json.loads((latest_root / "confirmation-latest.json").read_text(encoding="utf-8"))
 
-    assert verdict["status"] == "WARN"
+    assert verdict["status"] == "READY"
     assert verdict["can_run"] is True
+    assert summary["cann_path"] == str(cann_root)
+    assert summary["ascend_env_script_path"] is None
     assert summary["artifact_refs"] == {
         "verdict": "meta/readiness-verdict.json",
         "lock": "artifacts/workspace-readiness.lock.json",
@@ -165,6 +225,10 @@ def test_pipeline_warns_but_can_run_and_writes_latest_cache(tmp_path: Path, fake
     assert (output_dir / "meta" / "env.json").exists()
     assert (output_dir / "meta" / "inputs.json").exists()
     assert (output_dir / "logs" / "run.log").exists()
+    assert verdict["cann_path"] == str(cann_root)
+    assert verdict["ascend_env_script_path"] is None
+    assert latest_lock["cann_path"] == str(cann_root)
+    assert latest_lock["ascend_env_script_path"] is None
     assert latest_lock["launcher"] == "torchrun"
     assert latest_lock["selected_python"] == str(fake_selected_python)
     assert confirmation["current_confirmation"] is None
@@ -175,10 +239,11 @@ def test_pipeline_warns_but_can_run_and_writes_latest_cache(tmp_path: Path, fake
         "run_ref": "runs/latest/new-readiness-agent/run-ref.json",
     }
     compatibility_check = check_by_id(verdict, "framework-compatibility")
-    assert compatibility_check["status"] == "warn"
-    assert "Installed:" in compatibility_check["summary"]
-    assert "Recommended:" in compatibility_check["summary"] or "Expected one of:" in compatibility_check["summary"]
-    assert compatibility_check["details"]["installed_versions"]["torch"] == "1.0.0"
+    assert compatibility_check["status"] == "ok"
+    assert "match a local compatibility row" in compatibility_check["summary"]
+    assert compatibility_check["details"]["installed_versions"]["torch"] == "2.9.0"
+    report_markdown = (output_dir / "report.md").read_text(encoding="utf-8")
+    assert f"- cann_path: `{cann_root}`" in report_markdown
 
 
 def test_pipeline_offers_catalog_options_when_workspace_has_no_runtime_evidence(tmp_path: Path):
@@ -201,6 +266,62 @@ def test_pipeline_offers_catalog_options_when_workspace_has_no_runtime_evidence(
     assert "training" in current_options(summary)
     assert "inference" in current_options(summary)
     assert "__unknown__" in current_options(summary)
+
+
+def test_pipeline_blocks_when_framework_import_fails_at_runtime(tmp_path: Path):
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    (workspace / "train.py").write_text("import torch\nimport torch_npu\nfrom transformers import Trainer\n", encoding="utf-8")
+    (workspace / "train.yaml").write_text("model_name_or_path: model\ntrain_file: dataset/sample.txt\n", encoding="utf-8")
+    (workspace / "model").mkdir()
+    (workspace / "dataset").mkdir()
+    (workspace / "dataset" / "sample.txt").write_text("hello\n", encoding="utf-8")
+    cann_root = tmp_path / "cann"
+    cann_root.mkdir()
+    (cann_root / "version.cfg").write_text("version=8.5.0\n", encoding="utf-8")
+    selected_python = make_fake_selected_python_with_import_error(tmp_path, "torch_npu", "ImportError: libhccl.so: cannot open shared object file")
+    output_dir = tmp_path / "out"
+
+    run_pipeline(
+        "--working-dir",
+        str(workspace),
+        "--output-dir",
+        str(output_dir),
+        "--target",
+        "training",
+        "--framework-hint",
+        "pta",
+        "--launcher-hint",
+        "python",
+        "--selected-python",
+        str(selected_python),
+        "--entry-script",
+        "train.py",
+        "--config-path",
+        "train.yaml",
+        "--model-path",
+        "model",
+        "--dataset-path",
+        "dataset",
+        "--cann-path",
+        str(cann_root),
+        "--launch-command",
+        "python train.py --config train.yaml",
+        cwd=workspace,
+    )
+
+    verdict = json.loads((output_dir / "meta" / "readiness-verdict.json").read_text(encoding="utf-8"))
+    framework_importability = check_by_id(verdict, "framework-importability")
+    runtime_dependencies = check_by_id(verdict, "runtime-dependencies")
+    runtime_smoke = check_by_id(verdict, "runtime-smoke")
+
+    assert verdict["status"] == "BLOCKED"
+    assert verdict["can_run"] is False
+    assert framework_importability["status"] == "block"
+    assert "libhccl.so" in framework_importability["summary"]
+    assert framework_importability["import_errors"]["torch_npu"] == "ImportError: libhccl.so: cannot open shared object file"
+    assert runtime_dependencies["status"] == "block"
+    assert runtime_smoke["status"] == "block"
 
 
 def test_pipeline_advances_one_confirmation_step_at_a_time(tmp_path: Path):

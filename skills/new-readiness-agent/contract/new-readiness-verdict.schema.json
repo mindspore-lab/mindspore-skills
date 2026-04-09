@@ -22,6 +22,10 @@
     "assets",
     "selected_python",
     "selected_env_root",
+    "cann_path",
+    "ascend_env_script_path",
+    "cann_version_file",
+    "cann_candidate_paths",
     "environment_candidates",
     "checks",
     "current_confirmation",
@@ -97,6 +101,21 @@
     },
     "selected_env_root": {
       "type": ["string", "null"]
+    },
+    "cann_path": {
+      "type": ["string", "null"]
+    },
+    "ascend_env_script_path": {
+      "type": ["string", "null"]
+    },
+    "cann_version_file": {
+      "type": ["string", "null"]
+    },
+    "cann_candidate_paths": {
+      "type": ["array", "null"],
+      "items": {
+        "type": "string"
+      }
     },
     "environment_candidates": {
       "type": "array",

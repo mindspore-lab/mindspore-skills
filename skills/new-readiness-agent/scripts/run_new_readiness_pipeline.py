@@ -101,6 +101,8 @@ def main() -> int:
                 "can_run": verdict["can_run"],
                 "target": verdict["target"],
                 "summary": verdict["summary"],
+                "cann_path": verdict.get("cann_path"),
+                "ascend_env_script_path": verdict.get("ascend_env_script_path"),
                 "output_dir": str(output_dir),
                 "confirmation_step_ref": "artifacts/confirmation-step.json",
                 "current_confirmation": verdict["current_confirmation"] if verdict["confirmation_required"] else None,
