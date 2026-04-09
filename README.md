@@ -57,12 +57,38 @@ It is built on two closely related parts:
 - algorithm adaptation
 - operator implementation
 
+## Commands
+
+MindSpore Model Agent exposes a small set of slash commands as the public interface. Each command does lightweight routing and hands off to one or more specialist agents.
+
+| Command | Routes to | Mode |
+|---------|-----------|------|
+| `/preflight` | readiness-agent | environment check |
+| `/diagnose` | failure-agent · accuracy-agent · performance-agent | diagnose only |
+| `/fix` | failure-agent · accuracy-agent · performance-agent | diagnose + fix |
+| `/migrate` | readiness-agent · migrate-agent | environment check + migration |
+| `/integrate` | algorithm-agent · operator-agent | algorithm feature or operator integration |
+
 ## Repositories
 
 - `mindspore-cli`: the official CLI interface for MindSpore Model Agent
 - `mindspore-skills`: the reusable skill layer behind MindSpore Model Agent
 
 ## Installation
+
+### mindspore-cli
+
+`mindspore-cli` bundles all skills in the binary — no separate skill installation is required. See the [mindspore-cli repository](https://github.com/mindspore-lab/mindspore-cli) for more details.
+
+Launch and use slash commands directly:
+
+```bash
+/preflight
+/diagnose
+/fix
+/migrate
+/integrate
+```
 
 ### Claude Code
 
@@ -76,9 +102,11 @@ Register the marketplace and install:
 Then use slash commands:
 
 ```bash
+/ms:preflight
 /ms:diagnose
 /ms:fix
 /ms:migrate
+/ms:integrate
 ```
 
 ### OpenCode
@@ -110,9 +138,11 @@ ln -s ~/.config/opencode/mindspore-skills/commands/* ~/.config/opencode/commands
 Then in OpenCode:
 
 ```bash
+/preflight
 /diagnose
 /fix
 /migrate
+/integrate
 ```
 
 ### Gemini CLI
