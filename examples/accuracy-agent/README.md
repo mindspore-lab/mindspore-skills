@@ -1,108 +1,68 @@
 # Accuracy Agent — Examples
 
-## Scenario Panorama
+## 1. Coverage Map
 
-The accuracy-agent is designed to diagnose and fix accuracy problems across a
-range of model training and inference scenarios on Ascend NPU. The tables below
-show the full landscape of planned scenarios and their current support status.
+The current v1 example coverage is centered on accuracy problems that appear
+after the workload already runs successfully. The map below describes what kinds
+of mismatches the doc currently covers, what users usually see first, and what
+`accuracy-agent` checks next.
 
-### Overview
+| Class | Item | Typical symptom | What the agent checks next | Status |
+| --- | --- | --- | --- | --- |
+| configuration or input alignment | step1 loss mismatch | loss diverges at the first meaningful step even though the run completes | re-check aligned weights, inputs, preprocessing, tokenizer, masks, and labels before narrowing to modules | validated |
+| module or operator semantics | forward output mismatch | final output or an early module output differs between baseline and target on the same input | use structured tensor comparison to find the first stable mismatch, then verify module inputs, parameters, dtype, API parameters, and device placement | validated |
+| backward or update consistency | later divergence after a matching start | step1 matches, but gradients, updates, or later losses drift | compare gradients, one-step updates, loss scale, grad clipping, and distributed reduction behavior | planned |
+| numerical stability | non-fatal NaN or Inf | the job finishes or remains comparable, but invalid values appear during the run | find the first invalid step or module, then inspect overflow, ranges, and unstable precision paths | planned |
+| evaluation or metric consistency | eval-only or cross-platform regression | training/inference finishes, but final outputs or metrics differ across platforms or versions | compare golden outputs first, then metric/postprocessing definitions and the earliest internal mismatch that affects them | planned |
+| no trusted baseline | cannot name a clean reference side | the user sees a possible accuracy problem but has no baseline they trust | reduce to a minimal golden case and build the smallest meaningful confidence signal before making root-cause claims | planned |
 
-| Dimension | Supported | Planned |
-| --- | --- | --- |
-| Hardware topology | Single-card Ascend | Multi-card, multi-node |
-| Framework pairing | torch_npu vs MindSpore | GPU PyTorch vs Ascend, same-framework diffs |
-| Task type | Inference (eager) | Training, graph mode |
-| Distributed framework | — | DDP, Hyper-Parallel, MindSpeed, etc. |
-| Precision | FP32 / FP16 / BF16 | Mixed precision (AMP), quantization |
+## 2. Validated Coverage
 
-The target hardware is always Ascend NPU. The baseline may run on GPU or Ascend
-depending on the framework pairing.
+These rows are already demonstrated by the merged example material and the
+current supported demo path.
 
-### By Hardware Topology
+| Covered class | Covered item | Evidence form | Example / Demo | Result |
+| --- | --- | --- | --- | --- |
+| configuration or input alignment | step1 loss mismatch | supported comparison workflow | `/diagnose step1 loss mismatch between torch_npu baseline and mindspore target, check train_log.txt` | the doc already shows this as a supported diagnose path |
+| module or operator semantics | forward output mismatch | worked cross-framework example | zero-deviation torch_npu vs MindSpore inference alignment demo | the doc shows layer-by-layer comparison leading to API/default alignment or `mindspore.mint` replacement |
 
-| Topology | Status |
-| --- | --- |
-| Single-device single-card on Ascend | Supported |
-| Single-machine multi-card on Ascend | Planned |
-| Multi-machine multi-card on Ascend | Planned |
+Every validated example above maps back to at least one primary row in the
+Coverage Map.
 
-### By Framework Pairing
+## 3. Worked Example
 
-**Primary focus:**
+### Problem
 
-| Framework Pairing | Status |
-| --- | --- |
-| torch_npu vs MindSpore (both on Ascend) | Supported |
-| PyTorch (GPU) vs MindSpore (Ascend) | Planned |
-| PyTorch (GPU) vs torch_npu (Ascend) | Planned |
+Torch NPU and MindSpore inference scripts for the same model both run on Ascend,
+but the outputs do not align. The expected result is zero-deviation or
+machine-epsilon-level alignment.
 
-**Secondary (same-framework comparisons):**
+### Map Position
 
-| Framework Pairing | Status |
-| --- | --- |
-| MindSpore vs MindSpore (version or config diff) | Planned |
-| torch_npu vs torch_npu (cross-version) | Planned |
+- Class: module or operator semantics
+- Item: forward output mismatch
 
-### By Task Type
+### Observed Evidence
 
-| Task Type | Status |
-| --- | --- |
-| Inference (eager mode) | Supported |
-| Training (forward + backward + optimizer) | Planned |
-| Graph mode vs eager mode | Planned |
+- the baseline is `torch_npu` on Ascend and the target is MindSpore on Ascend
+- the run succeeds on both sides, so this is not a failure/readiness problem
+- the first user-visible symptom is an output mismatch rather than a crash
+- likely causes include API default mismatch, legacy operator path mismatch, or
+  init-time device inconsistency
 
-### By Distributed Framework
+### What the Agent Does
 
-| Distributed Framework | Status |
-| --- | --- |
-| Native distributed (DDP / parallel strategies) | Planned |
-| Hyper-Parallel, MindSpeed, etc. | Planned |
+- keep the baseline fixed and treat it as the source of truth
+- use layer-by-layer structured tensor comparison to locate the first stable
+  divergence point
+- verify module inputs before narrowing inside a mismatching module
+- if the mismatch stabilizes at one operator, align API parameters first and
+  prefer a direct `mindspore.mint` replacement before considering deeper rewrite
 
-### By Precision Context
+### Outcome
 
-FP32, FP16, and BF16 dtypes are supported. Mixed precision (AMP) scenarios and
-quantization (INT8 / INT4) are planned for future support.
-
-### Additional Scenarios (Future)
-
-- Checkpoint conversion / migration accuracy
-- Long-term training stability / convergence drift
-- Operator fusion accuracy impacts
-- Cross-framework-version accuracy regression
-
----
-
-## Currently Supported Scenario
-
-**Single-device single-card Ascend, torch_npu vs MindSpore, eager-mode
-inference, zero-deviation alignment.**
-
-The torch_npu model script serves as the accuracy baseline. The goal is to
-locate and fix accuracy issues in the MindSpore model script until outputs match
-with zero or machine-epsilon-level deviation.
-
-### What It Can Diagnose
-
-- Cross-framework API specification or default parameter misalignment
-- Kernel path differences between legacy MindSpore operators and torch_npu
-  operators
-- Computation device inconsistency during model initialization
-
-Examples: LayerNorm eps default differs between torch and MindSpore; RoPE
-`inv_freq` computed on CPU vs NPU due to different default device policies.
-
-### Diagnosis, Fix, and Expected Outcome
-
-The agent uses layer-by-layer structured tensor comparison to locate the first
-divergence point, then narrows down to the responsible module or operator.
-
-Fixes include aligning API parameters, replacing legacy `mindspore.nn` /
-`mindspore.ops` operators with `mindspore.mint` equivalents, and aligning
-init-computed state across frameworks.
-
-The expected outcome is zero-deviation or machine-epsilon-level alignment
-between torch_npu and MindSpore outputs.
+The agent narrows the drift to the first meaningful mismatch and applies a small
+alignment fix on the MindSpore side until outputs match the baseline.
 
 ### Demo
 
@@ -122,8 +82,37 @@ User prompt (EN):
 >   errors allowed.
 > - /accuracy-agent locate and fix this issue.
 
-Result: accuracy-agent compares results, traces the numerical drift to its
-source, and applies the fix automatically.
+## 4. Current Boundary
+
+### Currently Strong Coverage
+
+- single-device single-card Ascend
+- `torch_npu` vs MindSpore on Ascend
+- inference / eager-mode alignment
+- zero-deviation or machine-epsilon-level output comparison
+- diagnosis paths centered on configuration/input alignment, forward mismatch,
+  and output-level regression
+
+### Not Yet Fully Covered
+
+- training-time backward or optimizer mismatch flows
+- graph mode vs eager mode comparison as a validated example region
+- multi-card and multi-node accuracy analysis
+- mixed precision (AMP) and quantization-heavy accuracy cases
+- same-framework version/config regression examples with validated demos
+
+### Handoff / Boundary Notes
+
+Support dimensions such as topology, framework pairing, task type, distributed
+framework, and precision context are boundary/support context for this doc.
+They are not the Coverage Map itself.
+
+The current supported region is:
+- single-card Ascend
+- `torch_npu` vs MindSpore
+- eager-mode inference
+
+Other scenarios remain planned expansion areas rather than validated map rows.
 
 ---
 
