@@ -130,6 +130,12 @@ Recommended sequence:
 3. Recommend one memory-focused change first.
 4. Validate by comparing peak memory and the top memory-heavy stage.
 
+Deep-dive option: if a specific operator is identified and the user wants
+to understand why it uses more memory on NPU than on GPU, load
+`references/api-memory-consistency.md` for API-level NPU vs GPU memory
+consistency analysis. This reference handles stack routing (pta supported,
+mindspore not yet supported) and the full comparison workflow.
+
 ## Branch G: Optimizer or Update Dominates
 
 Use when the trace shows:

@@ -20,6 +20,16 @@ This skill supports two modes when a top-level router invokes it:
 This skill is for jobs that already run but are too slow, memory-heavy, or
 poorly utilized. It is not for crashes, setup problems, or accuracy diagnosis.
 
+This skill also provides direct entry to single-API memory consistency
+analysis. Load `references/api-memory-consistency.md` and follow its
+workflow when any of these conditions is met:
+
+- User invokes `/api_memory_analyze`
+- User provides a memory test script and asks to analyze memory
+  consistency
+- User reports a single API uses more NPU memory than GPU and provides
+  API name, input shapes, or test results
+
 ## Scope
 
 Use this skill when the user reports:
@@ -32,6 +42,7 @@ Use this skill when the user reports:
 - communication overhead
 - host launch or step gaps
 - profiler or trace interpretation needs
+- single-API NPU memory higher than GPU (`/api_memory_analyze`)
 
 Do not use this skill for:
 
@@ -174,6 +185,24 @@ Use `scripts/classify_bottlenecks.py` when structured summaries exist. Treat
 its ranked output as the primary source of truth for bottleneck ordering unless
 you have stronger contradictory evidence from a user-supplied trace artifact.
 
+### Branch F deep-dive: API memory consistency
+
+When the dominant bottleneck is Branch F (memory pressure) and a specific
+operator is identified as the primary memory consumer, offer the user an
+API-level NPU vs GPU memory comparison. Include the API name, input
+shape(s), and dtype(s) extracted from profiler data or user context:
+
+"Operator X dominates peak memory (input shape: …, dtype: …). Would you
+like me to run an API-level memory consistency analysis to determine
+whether it uses more memory on NPU than on the equivalent GPU path?"
+
+- User says yes → load `references/api-memory-consistency.md` and follow
+  its workflow, passing the API name, input shapes, and dtypes so the
+  Generate Script phase can proceed without additional user input. After
+  it completes (or returns early), resume the main performance workflow
+  from Stage 3.
+- User says no → continue to Stage 3 with the current bottleneck ranking.
+
 ## Stage 3. Snapshot Builder
 
 Write a reusable diagnosis snapshot that records the facts this performance
@@ -271,6 +300,7 @@ Load these references when needed:
 - `references/profiler-injection-templates.md`
 - `references/validation-playbook.md`
 - `references/perf-validation.md`
+- `references/api-memory-consistency.md`
 
 ## Scripts
 
