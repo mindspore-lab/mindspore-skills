@@ -50,6 +50,11 @@ Do not use this skill for:
   existence, `--help` probes, config readability, and command reconstruction.
 - Confirm one runtime field at a time instead of batching everything into one
   final confirmation form.
+- Prefer a host-provided structured question tool for small confirmation steps
+  when such a tool is available in the current host session.
+- Fall back to the existing stepwise text-stream confirmation flow when no
+  suitable structured question tool is available or the current step is not
+  suitable for structured interaction.
 - Never emit a final `WARN` or `BLOCKED` verdict before the current
   confirmation step has been shown to the user.
 - Preserve both detected values and final selected values in artifacts.
@@ -162,6 +167,61 @@ pipeline to advance to the next field or produce the final `READY`, `WARN`, or
 When rerunning after a user choice, pass the selected value back through
 `--confirm field=value`.
 
+## Host Interaction Adapter
+
+The Python pipeline only decides **what** the current confirmation step is. The
+host agent decides **how** to ask it.
+
+When the pipeline returns `status=NEEDS_CONFIRMATION`:
+
+1. Read `current_confirmation` from the pipeline result.
+2. If the current host session exposes a structured question tool and the step
+   is small enough for that tool, use the host tool.
+3. Otherwise, keep the existing text-stream confirmation flow.
+4. Map the user's answer back into `--confirm field=value`.
+5. Rerun `scripts/run_new_readiness_pipeline.py`.
+
+Do not try to make the Python script itself call host tools.
+
+### Structured Question Path
+
+Use a host-provided structured question tool only when all of the following are
+true:
+
+- the host tool is available in the current session
+- there is exactly one current confirmation step
+- the selectable options for that step fit within the host tool's option limits
+
+For the structured mapping:
+
+- map `current_confirmation.label` to `header`
+- map `current_confirmation.prompt` to `question`
+- map the concrete confirmation options to `options`
+- keep `skip check for now` as a normal option
+- do not include `enter a custom value manually` as an explicit option
+  when the host tool already provides a built-in free-text fallback such as
+  `Other`
+
+When the user answers:
+
+- if they choose a listed option, rerun with `--confirm field=<option.value>`
+- if they use the host tool's free-text fallback, rerun with
+  `--confirm field=<free text>`
+- if they choose `skip check for now`, rerun with `--confirm field=__unknown__`
+
+Do not force structured tools for large candidate sets such as long checkpoint
+lists or long environment lists. Those steps should continue to use the current
+text-stream fallback.
+
+### Text-Stream Fallback
+
+If no suitable host tool is available, keep the current text-stream behavior:
+
+- summarize the current confirmation step in plain text
+- ask the user for the selected number or value
+- map the reply back into `--confirm field=value`
+- rerun the pipeline
+
 ## Stage 3. Snapshot Builder
 
 Write reusable machine-readable artifacts for this run and for the workspace
@@ -239,7 +299,6 @@ Load these references when needed:
 - `references/product-contract.md`
 - `references/decision-rules.md`
 - `references/cache-contract.md`
-- `references/design-trace.md`
 
 ## Scripts
 

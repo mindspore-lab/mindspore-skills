@@ -801,3 +801,59 @@ skill 自己的控制 Python 和被认证的运行时环境不是一回事。真
 -> build confirmation state
 
 不能再回退到“资产目录只在最早扫描时生成一次”的做法。
+
+### 12.9 宿主交互增强必须放在 host adapter 层，而不是 Python pipeline 里
+
+后续出现了一个新的交互增强需求：
+
+- 在 Claude Code 里优先用 `AskUserQuestion`
+- 在其他宿主里继续保留当前文本流确认
+
+这里要守住的架构边界是：
+
+- `run_new_readiness_pipeline.py` 只能输出 `current_confirmation`
+- 它不能直接调用宿主的 host tool
+- 宿主结构化提问能力属于 host 层，而不是 pipeline 层
+
+因此如果以后继续增强交互能力，必须坚持：
+
+- readiness core 只负责“问什么”
+- host adapter 负责“怎么问”
+
+另一个重要限制是：
+
+- 当前参考实现里的 Claude `AskUserQuestion` 每题只支持 2-4 个选项
+
+所以不是所有 current confirmation step 都适合结构化提问。
+
+正确策略应当是：
+
+- 小选项步骤优先走宿主结构化提问能力
+- 长候选步骤回退到当前文本流
+- 不允许因为某个具体宿主工具不可用而阻断 readiness 流程
+
+详细方案单独记录在：
+
+- `references/interaction-platform-design.md`
+
+### 12.10 维护文档与 runtime skill 指令要分层
+
+`design-trace.md` 和 `interaction-platform-design.md` 的用途是：
+
+- 帮助维护者理解架构边界
+- 记录设计演化
+- 约束后续修改方向
+
+它们不是给运行时 agent 默认加载的产品契约。
+
+因此当前约定是：
+
+- 这类文档保留在 `references/`
+- 但不默认挂进 `SKILL.md` 的 runtime references
+
+`SKILL.md` 应只保留运行时真正需要的：
+
+- product contract
+- decision rules
+- cache contract
+- 以及必要的 host interaction instruction
