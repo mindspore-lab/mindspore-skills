@@ -109,26 +109,55 @@ Collect context and locate the first divergence point.
 3. Collect runtime context: framework versions, actual execution target, device
    placement.
 4. Collect model, dataset, config, checkpoint, and precision context.
-5. Load `references/comparison-scenarios.md` — it contains the decision table
+5. Load `references/precision-classification-map.md` first — classify the
+   problem into one primary precision bucket before selecting tools or branches.
+   Use the map to distinguish baseline issues, setup drift, module semantics,
+   single-operator numerics, training drift, and version or backend evolution.
+6. Load `references/comparison-scenarios.md` — it contains the decision table
    for choosing the right first comparison setup. Follow the matching scenario.
-6. Check whether determinism controls are enabled for the reduced compare.
+7. If the workspace uses `msprobe` or the user already has dump-based accuracy
+   tooling, load `references/msprobe-task-router.md` first — it routes common
+   accuracy symptoms to the right `msprobe` task instead of guessing between
+   dump, compare, grad, and overflow tools.
+8. If you will use `msprobe`, also load
+   `references/msprobe-config-cheatsheet.md` before writing or editing
+   `config.json`. It contains the minimum safe task/level/rank/step patterns
+   for common MindSpore workflows.
+9. Check whether determinism controls are enabled for the reduced compare.
 
 ### 1b. Locate the first divergence
 
-7. If writing a debug script or reduced repro: load
+9. If writing a debug script or reduced repro: load
    `references/debug-script-hygiene.md` first — it covers device-path
    verification, determinism controls, and input validation.
-8. Use layer-by-layer structured tensor comparison to locate the first stable
+10. Use layer-by-layer structured tensor comparison to locate the first stable
    divergence point. Compare module outputs systematically from input toward
    output. Do not skip structured comparison in favor of intuition-based
    guesses — without a known-issue knowledge base, structured comparison is the
    only reliable localization method.
-9. If choosing capture, compare, or monitor methods: load
+11. If choosing capture, compare, or monitor methods: load
    `references/tool-selection.md` — it covers method selection by evidence need.
-10. Keep narrowing until you can name the first module or stage that diverges in
+12. If the symptom is a step1 loss mismatch, wrong final output, or
+    cross-framework/module mismatch and the environment supports `msprobe`,
+    load `references/msprobe-accuracy-compare.md` — it covers dump levels,
+    compare modes, and when to use API, Cell, Layer, or mixed compare.
+13. If the symptom is later-stage drift after a normal start, load
+    `references/msprobe-grad-probe.md` — it covers gradient-step localization,
+    similarity thresholds, and the difference between training-step and
+    optimizer-step evidence.
+14. If the symptom is non-fatal NaN or Inf and the environment supports
+    `msprobe`, load `references/msprobe-overflow-and-nan.md` — it covers
+    overflow mode prerequisites, level selection, and how to separate first
+    overflow evidence from later propagation noise.
+15. If early evidence points to config drift, AMP mismatch, or checkpoint-lineage
+    mismatch, load `references/msprobe-config-and-ckpt-check.md` — it covers
+    config pack collection and checkpoint similarity checks before you blame one
+    operator.
+16. Keep narrowing until you can name the first module or stage that diverges in
     a stable, reproducible way. If you cannot, state what evidence is still
     missing.
-11. Build an `AccuracyProfile` capturing: symptom, baseline, first divergence
+17. Build an `AccuracyProfile` capturing: symptom, primary classification
+    bucket, baseline, first divergence
     point (or the next compare needed to find it), evidence collected, likely
     domains (data / config / model / checkpoint / dtype / api parameters /
     device placement / framework), and confidence.
@@ -182,7 +211,16 @@ From the identified divergence point, narrow and verify the root cause.
    facts, HF32 modes, accumulation paths, and kernel-path differences.
 7. If writing or revising a debug script: load
    `references/debug-script-hygiene.md` first.
-8. Return ranked root-cause candidates with: confidence, evidence, validation
+8. If the validation plan relies on `msprobe`, reuse the routing decision from
+   `references/msprobe-task-router.md` instead of switching tasks ad hoc.
+   Prefer one focused capture or compare pass over broad multi-task dumping.
+9. If the validation plan has already narrowed to one suspicious operator and
+   `msprobe` dump data is available, load
+   `references/msprobe-single-op-repro.md` — it covers when to generate a
+   single-operator script from dump data, when to use `random_data` versus
+   `real_data`, and how to treat the generated script as confirmation rather
+   than a new source of truth.
+10. Return ranked root-cause candidates with: confidence, evidence, validation
    checks, and fix hints.
    Include:
    - dtype, precision, API parameter, and device-placement consistency
