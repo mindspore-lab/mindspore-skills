@@ -24,6 +24,9 @@ Source repository:
 - Hugging Face `transformers`
 - Core path: `transformers/src/transformers`
 - Model tests: `transformers/tests/models`
+- A standalone HF-style model repository is also valid for this route, but it
+  has different configuration, tokenization, and processor rules. Load
+  `references/hf-transformers-standalone-model-repo.md` for those cases.
 
 Target repository:
 
@@ -98,6 +101,10 @@ files.
 #### 3.2 Device handling cleanup
 
 - Remove `.to(device)`, `.cuda()`, `torch.device`, and `mps` branches
+- Do not add `model.device`, `.device` compatibility properties, or other
+  PyTorch-style device shims
+- Remove `inputs.to(model.device)` from tests and examples instead of adapting
+  the model to support it
 - Check function signatures and remove device-only parameters when they are no
   longer needed
 - Do not remove `register_buffer` just because the original code had device
@@ -182,6 +189,24 @@ For `mindone/mindone/transformers/models/{model_name}/__init__.py`:
 
 Use Hugging Face auto files as a reference for insertion order.
 
+For standalone HF-style model repositories, also verify that every component
+needed by `trust_remote_code=False` loading has a local target implementation
+and local auto registration.
+
+### 4.1 Processor registration checks
+
+Before changing a processor class, inspect the source processor and source-side
+auto mappings for tokenizer, image processor, video processor, and processor
+classes.
+
+- Preserve source processor attributes when MindOne has equivalent local Auto
+  support.
+- If MindOne lacks local `AutoTokenizer` support for the model, add or register
+  the tokenizer locally when possible.
+- Only use processor-class workarounds, such as pointing `tokenizer_class` at a
+  concrete tokenizer class or reducing `attributes`, when local Auto support is
+  missing and the migration report documents the reason.
+
 ### 5. Done criteria
 
 - The minimal import validation succeeds via a `from transformers import xxx`
@@ -195,10 +220,13 @@ minimal import validation has passed for the migrated target.
 
 ## Route Guardrails
 
-- Do not migrate `configuration_*.py`, `tokenization_*.py`, or
-  `*moduler_*.py`
+- For upstream `transformers` source-tree migrations, do not migrate
+  `configuration_*.py`, `tokenization_*.py`, or `*moduler_*.py` by default.
+- For standalone HF-style model repos, migrate and register
+  `configuration_*`, tokenizer, and processor components when the target repo
+  lacks local implementations required for `trust_remote_code=False`.
 - Reuse Hugging Face configuration and tokenization implementations directly
-  unless the target repo has a compelling local requirement
+  only when the target repo can load them locally without remote-code fallback.
 - Keep changes minimal and aligned with existing MindOne patterns
 - Avoid adding custom compatibility wrappers unless they are required
 - Use diff-based insertion when updating auto maps
@@ -208,6 +236,8 @@ guardrails:
 
 - `references/hf-transformers-guardrails.md`
 - `references/hf-transformers-env.md`
+- `references/hf-transformers-standalone-model-repo.md` for standalone
+  HF-style model repositories
 
 ## Route Output
 
