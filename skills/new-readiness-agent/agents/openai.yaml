@@ -1,0 +1,7 @@
+interface:
+  display_name: "New Readiness Agent"
+  short_description: "Read-only NPU workspace readiness certification"
+  default_prompt: "Use $new-readiness-agent to certify whether this local NPU workspace can start training or inference now without changing the environment."
+
+policy:
+  allow_implicit_invocation: true

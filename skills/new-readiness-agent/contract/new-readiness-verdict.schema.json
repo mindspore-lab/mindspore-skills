@@ -1,0 +1,149 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mindspore-skills.dev/schema/new-readiness-verdict-1.0.0.json",
+  "title": "New Readiness Agent Verdict",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "skill",
+    "phase",
+    "status",
+    "confirmation_required",
+    "pending_confirmation_fields",
+    "can_run",
+    "target",
+    "summary",
+    "missing_items",
+    "warnings",
+    "next_action",
+    "launcher",
+    "framework",
+    "assets",
+    "selected_python",
+    "selected_env_root",
+    "cann_path",
+    "ascend_env_script_path",
+    "cann_version_file",
+    "cann_candidate_paths",
+    "environment_candidates",
+    "checks",
+    "current_confirmation",
+    "confirmed_fields",
+    "evidence_summary",
+    "lock_ref",
+    "latest_cache_ref"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "new-readiness-agent/0.1"
+    },
+    "skill": {
+      "type": "string",
+      "const": "new-readiness-agent"
+    },
+    "phase": {
+      "type": "string",
+      "enum": ["awaiting_confirmation", "validated"]
+    },
+    "status": {
+      "type": "string",
+      "enum": ["NEEDS_CONFIRMATION", "READY", "WARN", "BLOCKED"]
+    },
+    "confirmation_required": {
+      "type": "boolean"
+    },
+    "pending_confirmation_fields": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "can_run": {
+      "type": "boolean"
+    },
+    "target": {
+      "type": ["string", "null"],
+      "enum": ["training", "inference", null]
+    },
+    "summary": {
+      "type": "string",
+      "minLength": 1
+    },
+    "missing_items": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "next_action": {
+      "type": "string",
+      "minLength": 1
+    },
+    "launcher": {
+      "type": "object"
+    },
+    "framework": {
+      "type": "object"
+    },
+    "assets": {
+      "type": "object"
+    },
+    "selected_python": {
+      "type": ["string", "null"]
+    },
+    "selected_env_root": {
+      "type": ["string", "null"]
+    },
+    "cann_path": {
+      "type": ["string", "null"]
+    },
+    "ascend_env_script_path": {
+      "type": ["string", "null"]
+    },
+    "cann_version_file": {
+      "type": ["string", "null"]
+    },
+    "cann_candidate_paths": {
+      "type": ["array", "null"],
+      "items": {
+        "type": "string"
+      }
+    },
+    "environment_candidates": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "checks": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "current_confirmation": {
+      "type": ["object", "null"]
+    },
+    "confirmed_fields": {
+      "type": "object"
+    },
+    "evidence_summary": {
+      "type": "object"
+    },
+    "lock_ref": {
+      "type": "string",
+      "minLength": 1
+    },
+    "latest_cache_ref": {
+      "type": "object"
+    }
+  }
+}

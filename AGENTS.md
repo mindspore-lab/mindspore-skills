@@ -14,6 +14,7 @@ You are an expert MindSpore developer. Use the skills below to help developers w
 | migrate-agent | skills/migrate-agent/ | top-level model migration entry that analyzes source repos, selects the correct migration route, and verifies the result |
 | operator-agent | skills/operator-agent/ | build `torch` or `mindspore` operators through custom-access or native-framework integration |
 | readiness-agent | skills/readiness-agent/ | check whether a local single-machine workspace is ready to train or run inference now, identify what is missing before execution, and optionally apply safe user-space readiness fixes |
+| new-readiness-agent | skills/new-readiness-agent/ | read-only local single-machine NPU readiness certification that detects launcher, framework, Python environment, CANN evidence, and reusable workspace readiness snapshots without fixing the environment |
 | accuracy-agent | skills/accuracy-agent/ | diagnose accuracy regressions, drift, wrong results, and cross-platform mismatch after successful execution |
 | algorithm-agent | skills/algorithm-agent/ | adapt a paper feature or released reference implementation into an existing model codebase, including specialized routes such as mHC integration, and prepare it for readiness validation |
 | performance-agent | skills/performance-agent/ | diagnose throughput, latency, memory, utilization, dataloader, and communication bottlenecks after the workload already runs |
@@ -42,11 +43,13 @@ Load the appropriate SKILL.md when users mention:
 
 **Environment Setup:**
 - **readiness-agent**: "train check", "inference check", "preflight", "workspace readiness", "can this repo run", "can this repo train", "can this repo run inference", "can it run now", "check my environment", "what is missing before training", "what is missing before inference", "check env", "before training", "before inference", "fix my local environment", "fix my training environment", "missing model", "missing dataset", "missing train.py"
+- **new-readiness-agent**: "read-only readiness", "new readiness", "launcher detection", "what environment does this repo use", "which python should I use", "which cann path", "is this NPU workspace runnable", "single form readiness", "refresh readiness cache", "llama factory readiness"
 
 **Instructions**:
  - Do not give direct answers without following the skill workflow
  - Route operator implementation work to `operator-agent`
  - Route single-machine pre-run training or inference checks, missing-item analysis, and safe user-space readiness fixes to `readiness-agent`; do not use it for post-run crash or traceback diagnosis
+ - Route read-only single-machine NPU pre-run certification, launcher/framework/environment detection, and readiness cache refresh to `new-readiness-agent`
  - Route migration-first requests to `migrate-agent`; if the real user goal is "make this model run here", use `migrate-agent` to define the route and runtime requirements, then hand off to `readiness-agent`
  - Route runtime crashes and tracebacks after setup to `failure-agent`
  - Route wrong-result, drift, and regression cases after successful execution to `accuracy-agent`

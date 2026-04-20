@@ -19,6 +19,7 @@ structured outputs that downstream tools such as `mscli` can consume.
 The current top-level skill surface is:
 
 - `readiness-agent`
+- `new-readiness-agent`
 - `failure-agent`
 - `accuracy-agent`
 - `algorithm-agent`
@@ -40,6 +41,7 @@ The user should enter by intent, not by low-level implementation detail.
 Recommended entry mapping:
 
 - "Can this workspace train?" -> `readiness-agent`
+- "Which launcher, Python, and CANN path should this workspace use?" -> `new-readiness-agent`
 - "The run failed, why?" -> `failure-agent`
 - "The run finishes, but the result is wrong." -> `accuracy-agent`
 - "Adapt this paper trick or feature into my current model codebase." -> `algorithm-agent`
@@ -87,6 +89,31 @@ What it does not do:
 - broad machine cleanup outside the selected workspace or environment
 - post-run diagnosis
 - multi-node distributed checks
+
+### `new-readiness-agent`
+
+Purpose:
+- certify whether a single-machine NPU workspace can start training or inference now without mutating the environment
+
+Core workflow:
+1. `workspace-analyzer`
+2. `compatibility-validator`
+3. `snapshot-builder`
+4. `report-builder`
+
+What it checks:
+- launcher family and launch command shape
+- framework path and LLaMA-Factory usage
+- Python and environment candidates
+- CANN and Ascend runtime evidence
+- required local assets and import-level runtime prerequisites
+- workspace latest readiness cache for downstream agents
+
+What it does not do:
+- environment repair
+- dependency installation
+- real workload execution
+- distributed checks
 
 ### `failure-agent`
 
@@ -235,6 +262,7 @@ Important boundary:
 These agents are not isolated. They form a layered problem space:
 
 - `readiness-agent` answers whether a workspace should run
+- `new-readiness-agent` answers whether a workspace should run when the user wants a read-only certification plus a reusable latest cache
 - `failure-agent` answers why a run did not complete
 - `accuracy-agent` answers why a completed run produced the wrong result
 - `algorithm-agent` adapts new feature ideas into the current codebase
