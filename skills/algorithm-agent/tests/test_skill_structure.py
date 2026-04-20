@@ -23,7 +23,9 @@ def test_attnres_route_pack_exists():
     assert (ROOT / "references" / "attnres" / "attnres-qwen3-case-study.md").exists()
 
 
-def test_intake_prestage_combined_references_and_helper_exist():
-    assert (ROOT / "references" / "intake-prestage-and-triage.md").exists()
-    assert (ROOT / "references" / "intake-prestage-verification-and-admission.md").exists()
-    assert (ROOT / "scripts" / "intake_prestage_artifact_helper.py").exists()
+def test_transmla_route_pack_exists():
+    assert (ROOT / "references" / "transmla" / "transmla-implementation-pattern.md").exists()
+    assert (ROOT / "references" / "transmla" / "transmla-validation-checklist.md").exists()
+    assert (ROOT / "references" / "transmla" / "transmla-case-study.md").exists()
+
+

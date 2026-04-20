@@ -125,8 +125,8 @@ You must inspect the local repository and determine:
 - route-specific constraints that must be preserved
 - route-specific validations that must run before handoff
 
-Build an `IntegrationPlan` that records `route_specific_constraints` and
-`route_specific_validations`.
+Build an `IntegrationPlan` that records `route_specific_constraints`,
+`route_specific_validations`, and `code_map_summary`.
 
 ### `generic-feature` route
 
@@ -196,8 +196,13 @@ Route rules:
 
 - Treat TransMLA as an attention / KV-cache conversion case, not as a generic
   adapter patch.
-- Keep the integration scope bounded and preserve baseline-off behavior unless
-  the selected proving scope explicitly replaces the original path.
+- Keep v1 scope bounded and preserve baseline-off behavior unless the selected
+  proving scope explicitly replaces the original path.
+- Treat checkpoint-remap as a separate follow-on unless it is already part of
+  the bounded slice being proved.
+- Keep semantic-slice work separate from runtime/cache follow-ons.
+- Keep paged runtime, broader runtime orchestration, and fuller MLA semantics
+  as explicit non-claims unless later bounded work proves them.
 - Use the TransMLA references for implementation pattern, validation, and case
   detail instead of expanding them inline in `SKILL.md`.
 - Record the route-specific constraints and validations in the

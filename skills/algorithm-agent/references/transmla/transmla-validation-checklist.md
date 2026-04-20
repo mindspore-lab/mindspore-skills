@@ -1,6 +1,7 @@
 # TransMLA Validation Checklist
 
-Use this checklist for a TransMLA-style bounded proving case or follow-on.
+Use this checklist when the selected `algorithm-agent` route is `transmla` and
+the current step is a bounded proving case or follow-on.
 
 ## Minimum validation
 
@@ -9,9 +10,11 @@ Use this checklist for a TransMLA-style bounded proving case or follow-on.
 2. Baseline-off behavior preserves the original path.
 3. The bounded feature-on path completes one focused forward smoke with the
    expected output shape.
-4. Any claimed checkpoint-remap or load path works for the exact supported
+4. Checkpoint-remap validation only when claimed works for the exact supported
    artifact shape.
-5. Validation results are recorded with explicit status values such as `pass`,
+5. Cache/runtime smoke only when claimed succeeds for the exact bounded runtime
+   slice being reported.
+6. Validation results are recorded with explicit status values such as `pass`,
    `fail`, `blocked`, `partial`, or `not_run`; unexecuted checks must not be
    implied as `pass`.
 
@@ -19,13 +22,13 @@ Use this checklist for a TransMLA-style bounded proving case or follow-on.
 
 1. Run a focused parity or semantic check for the exact bounded slice being
    claimed.
-2. Run one cache/generation smoke if the bounded step explicitly includes a
+2. Run one exact cache contract check if the bounded step explicitly includes a
    cache/runtime path.
 3. Run the dtypes and backends that matter for the current bounded claim.
 4. Run one remote or target-environment validation when local environment gaps
    would otherwise hide the real blocker.
-5. Distinguish environment blockers from code sync issues and from real runtime
-   contract failures.
+5. Distinguish environment blockers from code-sync issues, runtime-contract
+   failures, and semantic mismatch.
 
 ## Example test ideas
 
@@ -66,8 +69,10 @@ _ = cache[0]
 - first cached run fails at indexed cache access: likely cache-construction or
   cache-layout contract mismatch
 - semantic slice passes with `use_cache=False` but not with `use_cache=True`:
-  runtime/cache should be treated as a separate follow-on
-- evidence exists only for one narrow smoke: success wording must stay bounded
+  runtime/cache should be treated as a separate follow-on, not as semantic proof
+- remap works only for one artifact shape: keep compatibility claims narrow
+- generated/source-of-truth files drift apart after editing: likely regen or
+  code ownership problem rather than model semantics
 
 ## Explicit non-claim discipline
 
@@ -79,3 +84,4 @@ A passing bounded TransMLA check does **not** imply:
 - broader MindSpore-native runtime completion
 - training/serving readiness
 - performance characterization
+- broader route maturity than the bounded validation actually proved

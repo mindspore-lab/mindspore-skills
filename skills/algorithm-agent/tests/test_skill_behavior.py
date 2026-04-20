@@ -33,11 +33,32 @@ def test_route_selection_and_route_packs_are_declared():
     assert "`references/attnres/attnres-qwen3-case-study.md`" in text
 
 
-def test_algorithm_agent_remains_top_level_entry():
+def test_transmla_route_pack_and_conservative_guidance_are_declared():
     text = SKILL_MD.read_text(encoding="utf-8")
-    assert "This skill is the top-level algorithm feature entry." in text
-    assert "The user should not need to" in text
-    assert "Do not turn route selection into a fifth workflow stage." in text
+    impl_text = (ROOT / "references" / "transmla" / "transmla-implementation-pattern.md").read_text(encoding="utf-8")
+    checklist_text = (ROOT / "references" / "transmla" / "transmla-validation-checklist.md").read_text(encoding="utf-8")
+    case_text = TRANSMLA_CASE_MD.read_text(encoding="utf-8")
+
+    assert "`references/transmla/transmla-implementation-pattern.md`" in text
+    assert "`references/transmla/transmla-validation-checklist.md`" in text
+    assert "`references/transmla/transmla-case-study.md`" in text
+    assert "checkpoint-remap as a separate follow-on" in text
+    assert "semantic-slice work separate from runtime/cache follow-ons" in text
+    assert "paged runtime, broader runtime orchestration, and fuller MLA semantics" in text
+
+    assert "## Bounded proving progression" in impl_text
+    assert "## Checkpoint-remap boundary" in impl_text
+    assert "## Runtime/cache boundary" in impl_text
+    assert "Keep each step as one narrow question." in impl_text
+
+    assert "Checkpoint-remap validation only when claimed" in checklist_text
+    assert "Cache/runtime smoke only when claimed" in checklist_text
+    assert "fuller MLA semantics" in checklist_text
+
+    assert "## What the closed bounded case established" in case_text
+    assert "## What stayed separate in the closed result" in case_text
+    assert "## Reusable lessons" in case_text
+    assert "Do not reopen this closed case" in case_text
 
 
 def test_intake_prestage_pipeline_rules_are_present():

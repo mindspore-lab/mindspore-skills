@@ -1,9 +1,9 @@
 # TransMLA Case Study
 
-Use this case study as the first completed bounded representative case for a
-TransMLA-style algorithm integration flow.
+Use this case study as a closed-result reference for the first completed bounded
+representative case in a TransMLA-style algorithm integration flow.
 
-## What was completed
+## What the closed bounded case established
 
 The completed TransMLA work progressed through bounded follow-ons rather than
 one large migration claim:
@@ -16,8 +16,6 @@ one large migration claim:
 
 This made TransMLA the first real paper-driven case pushed through a bounded
 validation loop rather than a pure exploration-only example.
-
-## What the completed case established
 
 ### 1. Bounded progression works
 
@@ -35,12 +33,12 @@ The case showed that a paper-driven algorithm feature can be advanced through:
 The remap step was useful, but it stayed separate from the first proving patch.
 That kept the success line narrow and made compatibility claims explicit.
 
-### 3. Semantic slice and runtime/cache work must stay separated
+### 3. Semantic slice and runtime/cache work stay separate
 
 The bounded MLA-like semantic slice was validated first. Runtime/cache work was
 only reopened once an actual cache-contract failure was observed.
 
-### 4. Native runtime work should stay narrow
+### 4. Native runtime work stayed narrow
 
 On the MindSpore-native side, the useful path was:
 
@@ -49,6 +47,16 @@ On the MindSpore-native side, the useful path was:
 - validate the non-cached path
 - evaluate cache failure separately
 - implement one bounded native cache-path fix
+
+## What stayed separate in the closed result
+
+The following remained separate follow-ons rather than being merged into one
+broader TransMLA claim:
+
+- checkpoint remap versus the first proving patch
+- semantic-slice evidence versus runtime/cache evidence
+- native non-cached feasibility versus bounded native cache-path repair
+- bounded completed work versus paged runtime and broader runtime integration
 
 ## Conservative success wording that should be reused
 
@@ -60,7 +68,7 @@ Reuse wording like:
 - bounded native cache-path fix
 - validated for intended scope
 
-## Explicitly out of scope in the completed case
+## Explicitly out of scope in the closed result
 
 The following stayed out of scope and should remain explicit non-claims unless a
 later task proves them:
@@ -85,7 +93,7 @@ later task proves them:
 - paged runtime should remain deferred until it becomes a concrete blocker in a
   runtime-coupled task
 
-## What stayed case-specific
+## Case-specific cautions
 
 The completed case was centered on Qwen-like decoder stacks and included
 Qwen3-specific evidence, including model-file insertion points, cache behavior,
@@ -102,3 +110,5 @@ Reuse the TransMLA pattern for the next proving case as:
 
 Use the next case to test whether this pattern generalizes cleanly without
 reopening deeper TransMLA-specific follow-ons.
+
+Do not reopen this closed case through the case-study wording itself.
