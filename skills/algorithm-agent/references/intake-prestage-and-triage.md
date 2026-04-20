@@ -1,8 +1,8 @@
-# Phase-1 Intake and Triage
+# Intake Pre-Stage and Triage
 
-Status: not part of the current live `algorithm-agent` skill flow.
+Status: this file describes the current **bounded intake pre-stage** within the `algorithm-agent` workflow. It is used before live patch work for triage and entry decisions; once intake passes, execution returns to the current patch-stage main flow.
 
-Keep phase-1 paper intake compact.
+Keep bounded intake compact.
 
 This reference combines:
 - intake artifact definition
@@ -12,9 +12,14 @@ This reference combines:
 
 ## Purpose
 
-Convert paper discovery into:
+Use this bounded intake pre-stage to decide whether a candidate should enter the
+live patch-focused flow.
+
+Convert early discovery into:
 - a structured intake artifact
-- a ranked shortlist
+- a released-code existence check
+- a source qualification result
+- a go / no-go entry decision
 - a recommended next action
 
 Use DeepXiv as the preferred/default paper-intake assistant, but keep intake
@@ -51,16 +56,17 @@ Score or tag each candidate on:
 - `integration_surface_clarity`
 - `bridge_value`
 - `verification_value`
-- `phase1_tractability`
+- `intake_tractability`
 - `recommended_next_action`
 
-### Hard gates before extraction
+### Hard gates before patch entry
 
-The following must not be low for a phase-1 proving candidate:
+The following must not be low for a bounded intake candidate to enter live patch
+work:
 
 - `code_availability`
 - `target_family_fit`
-- `phase1_tractability`
+- `intake_tractability`
 
 If any of these are low, default to `reject` or `watchlist`.
 
@@ -95,10 +101,10 @@ Use these to rank candidates that pass the gates:
 - medium: validates only part of the scaffold
 - low: little new scaffold value
 
-#### `phase1_tractability`
-- high: realistic proving-case scope now
+#### `intake_tractability`
+- high: realistic bounded entry candidate now
 - medium: feasible with constrained scope
-- low: too large or ambiguous for phase 1
+- low: too large or ambiguous for bounded intake
 
 ## Default routing behavior
 
@@ -108,7 +114,7 @@ Use these to rank candidates that pass the gates:
   medium `integration_surface_clarity` -> `proving candidate`
 - promising but blocked by timing or ambiguity -> `watchlist`
 
-## Phase-1 proving-case calibration
+## Bounded intake calibration
 
 Use `TransMLA` as the first worked example for calibrating:
 - intake scoring

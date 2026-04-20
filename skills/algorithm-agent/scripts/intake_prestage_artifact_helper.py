@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Generate compact phase-1 algorithm artifacts.
+"""Generate compact intake-prestage algorithm artifacts.
 
-This combined helper keeps phase-1 file growth small by covering adjacent
+This combined helper keeps intake-prestage file growth small by covering adjacent
 intake, code-map, and verification-report generation in one place.
 """
 
@@ -138,7 +138,7 @@ def write_or_print(payload: dict, output: str | None) -> int:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Generate compact phase-1 algorithm artifacts")
+    parser = argparse.ArgumentParser(description="Generate compact intake-prestage algorithm artifacts")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     intake = subparsers.add_parser("intake", help="Generate an intake artifact")

@@ -63,4 +63,4 @@ report_schema:
     required_fields: ["route", "open_questions", "recommended_checks", "verification_scaffold", "preliminary_handoff_target"]
 
 out_dir_layout:
-  notes: "Prefer the smallest coherent artifact footprint in phase 1: keep intake+routing guidance together, keep verification+admission guidance together, default to one combined helper scaffold, and only split files when reuse clearly justifies it."
+  notes: "Prefer the smallest coherent artifact footprint in the bounded intake pre-stage: keep intake+routing guidance together, keep verification+admission guidance together, default to one combined helper scaffold, and only split files when reuse clearly justifies it."

@@ -1,7 +1,11 @@
 from pathlib import Path
 
 
-SKILL_MD = Path(__file__).resolve().parents[1] / "SKILL.md"
+ROOT = Path(__file__).resolve().parents[1]
+SKILL_MD = ROOT / "SKILL.md"
+INTAKE_TRIAGE_MD = ROOT / "references" / "intake-prestage-and-triage.md"
+INTAKE_VERIFY_MD = ROOT / "references" / "intake-prestage-verification-and-admission.md"
+TRANSMLA_CASE_MD = ROOT / "references" / "transmla" / "transmla-case-study.md"
 
 
 def test_workflow_stages_are_present():
@@ -36,15 +40,20 @@ def test_algorithm_agent_remains_top_level_entry():
     assert "Do not turn route selection into a fifth workflow stage." in text
 
 
-def test_phase1_pipeline_rules_are_present():
-    text = SKILL_MD.read_text(encoding="utf-8")
-    assert "DeepXiv as the preferred paper-intake assistant/source" in text
-    assert "candidate scoring / triage" in text
-    assert "reference-code -> code-map -> patch-plan" in text
-    assert "phase 1 should default to one combined helper/scaffold script" in text
-    assert "Admission hard blockers" in text
-    assert "Use `TransMLA` as the first worked example" in text
-    assert "`qualification_basis`" in text
-    assert "`source_status`" in text
-    assert "must use only" in text
-    assert "`pass`, `fail`, `blocked`, `not_run`, or `partial`" in text
+def test_intake_prestage_pipeline_rules_are_present():
+    triage_text = INTAKE_TRIAGE_MD.read_text(encoding="utf-8")
+    verify_text = INTAKE_VERIFY_MD.read_text(encoding="utf-8")
+    transmla_case_text = TRANSMLA_CASE_MD.read_text(encoding="utf-8")
+
+    assert "DeepXiv as the preferred/default paper-intake assistant" in triage_text
+    assert "intake scoring / triage rubric" in triage_text
+    assert "Use `TransMLA` as the first worked example" in triage_text
+    assert "`qualification_basis`" in triage_text
+    assert "`source_status`" in triage_text
+
+    assert "bounded intake pre-stage should default to one combined helper/scaffold" in verify_text
+    assert "### Hard blockers" in verify_text
+    assert "Allowed status values:" in verify_text
+    assert "- `partial`" in verify_text
+
+    assert "intake -> reference-code map -> bounded patch scope -> focused verification" in transmla_case_text

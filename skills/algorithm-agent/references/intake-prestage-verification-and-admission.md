@@ -1,14 +1,14 @@
-# Phase-1 Verification and Admission
+# Intake Pre-Stage Verification and Admission
 
-Status: not part of the current live `algorithm-agent` skill flow.
+Status: this file describes the current **bounded intake pre-stage** within the `algorithm-agent` workflow. It is used before live patch work for triage and entry decisions; once intake passes, execution returns to the current patch-stage main flow.
 
-Keep verification scaffold guidance and factory/template admission guidance
-combined in phase 1 unless reuse clearly justifies splitting.
+Keep verification scaffold guidance and admission guidance compact in this
+bounded intake pre-stage unless reuse clearly justifies splitting.
 
 ## Verification Scaffold
 
-This phase-1 scaffold is a minimum validation recording contract, not a claim
-that full execution is already automated or complete.
+This bounded intake pre-stage scaffold is a minimum validation recording
+contract, not a claim that full execution is already automated or complete.
 
 Each slot should record:
 - purpose
@@ -42,8 +42,8 @@ never be implied as `pass`.
 
 ### Bounded proving-case result rule
 
-A successful phase-1 bounded proving-case result may stop once the selected
-scope has recorded the expected evidence for that bounded rung. For the current
+A successful bounded proving-case result may stop once the selected scope has
+recorded the expected evidence for that bounded rung. For the current
 TransMLA proving case, that bounded success line is: default-off behavior
 preserved, no-remap scope preserved, regeneration-backed patch status, passing
 import/init, and passing minimal forward on the selected runtime path.
@@ -63,7 +63,8 @@ Hand off to:
 
 ## Combined-helper default
 
-Phase 1 should default to one combined helper/scaffold script covering adjacent:
+The bounded intake pre-stage should default to one combined helper/scaffold
+script covering adjacent:
 - intake artifact generation
 - code-map artifact generation
 - verification report generation
@@ -73,13 +74,13 @@ maintainable.
 
 ## Runnable vs Scaffold-only Boundary
 
-### Must be runnable in phase 1
+### Must be runnable in bounded intake
 - intake artifact generation
 - code-map artifact generation
 - verification report generation with expected check slots and statuses
 - at least one worked proving-case pass through the scaffold path
 
-### May remain scaffold-only in phase 1
+### May remain scaffold-only in bounded intake
 - full automation of all torch / torch_npu / MindSpore execution steps
 - automatic collection of every metric/check without manual assistance
 - broad multi-case generation beyond the proving set
