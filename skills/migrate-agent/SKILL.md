@@ -62,6 +62,7 @@ You must identify:
   - generic MindSpore-style implementation
 - workspace shape:
   - library-style repo
+  - standalone HF-style transformers model repo
   - standalone model repo
   - partial local copy
 - task or model family when visible
@@ -128,6 +129,7 @@ helper assets:
 - `references/hf-transformers.md`
 - `references/hf-transformers-guardrails.md`
 - `references/hf-transformers-env.md`
+- `references/hf-transformers-standalone-model-repo.md`
 - `scripts/hf_transformers_auto_convert.py`
 - `scripts/hf_transformers_auto_convert.requirements.txt`
 
@@ -217,6 +219,7 @@ Load these references when needed:
 - `references/hf-transformers.md`
 - `references/hf-transformers-guardrails.md`
 - `references/hf-transformers-env.md`
+- `references/hf-transformers-standalone-model-repo.md`
 - `references/hf-diffusers.md`
 - `references/generic-pytorch.md`
 

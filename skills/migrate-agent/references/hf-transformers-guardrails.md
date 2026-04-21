@@ -9,6 +9,17 @@
 - Use diff-based insertion when updating auto maps.
 - Keep changes minimal and aligned with existing MindOne patterns.
 - `register_buffer` is supported in MindSpore; do not remove it as part of device-handling cleanup.
+- Do not add `model.device`, `.device` compatibility properties, or other
+  PyTorch-style device shims; remove device-only usage from migrated code,
+  tests, and examples instead.
+- Standalone HF-style model repositories are an exception to the default rule
+  against migrating configuration and tokenization files when local
+  `trust_remote_code=False` loading requires those components.
+- Do not change processor `tokenizer_class`, `attributes`,
+  `image_processor_class`, or `video_processor_class` by default; do it only
+  when target Auto capability is missing and record the reason.
+- Do not load `AutoProcessor` inside model `__init__` to infer preprocessing
+  defaults; prefer config values or local processor defaults.
 - Preserve the route's `mindspore.mint` and `mindspore.mint.nn` conversions by
   default after auto-convert.
 - Do not batch-convert auto-generated `mint.*` and `mint.nn.*` usages back to
