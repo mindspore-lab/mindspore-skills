@@ -165,6 +165,54 @@ Do not auto-mutate Factory from this file.
 
 ## MindSpore-Focused Failures
 
+### Startup Context Missing Misread as Backend Bug
+
+- kind: known_issue
+- symptom: failure
+- id_hint: startup-context-misread-as-backend-bug
+- severity: high
+- lifecycle_state: stable
+- source_kind: bootstrap
+- confidence_level: bootstrap
+- tags: [shared, startup, context, initialization, backend, misroute]
+- affects_platforms: [ascend, gpu, cpu]
+- detection_pattern: "context is empty|device not initialized|set_context|startup import fails|first tensor op"
+- description: A startup or initialization contract is missing, but the visible failure is later misread as a backend, operator, or runtime bug.
+- fix_summary: Reconstruct the first device-initialization boundary and confirm context setup, backend selection, and startup ordering before debugging kernels or operators.
+- validation: Re-run the minimal startup sequence and confirm the failure disappears once initialization and context ordering are corrected.
+
+### Compile-Time Failure Misread as Runtime Failure
+
+- kind: known_issue
+- symptom: failure
+- id_hint: compile-time-failure-misread-as-runtime-failure
+- severity: medium
+- lifecycle_state: stable
+- source_kind: bootstrap
+- confidence_level: bootstrap
+- tags: [shared, compile, runtime, graph, infer, misroute]
+- affects_platforms: [ascend, gpu, cpu]
+- detection_pattern: "graph compile.*runtime|compile failed.*runtime|infer failed.*launch|abstract.*runtime"
+- description: A compile-time frontend or inference failure is mistaken for a runtime backend error because the visible traceback points to a later launch or wrapper boundary.
+- fix_summary: Separate graph-build from runtime execution first by comparing compile mode, eager mode, and the first stable infer or abstract frame.
+- validation: Re-run the same reproducer in the contrasting execution mode and confirm whether the failure stays in compile-time routing instead of runtime execution.
+
+### Operator Unsupported Misread Instead of Preconditions
+
+- kind: known_issue
+- symptom: failure
+- id_hint: operator-unsupported-misread-instead-of-preconditions
+- severity: medium
+- lifecycle_state: stable
+- source_kind: bootstrap
+- confidence_level: bootstrap
+- tags: [shared, operator, support, shape, dtype, precondition, misread]
+- affects_platforms: [ascend, gpu, cpu]
+- detection_pattern: "operator unsupported.*precondition|kernel not found.*dtype|kernel not found.*shape|not supported.*dtype"
+- description: The reported unsupported-operator message is often a secondary effect of violated shape, dtype, mode, or parameter preconditions rather than a true backend support gap.
+- fix_summary: Check input shape, dtype, mode, and parameter constraints before concluding the operator is missing on the backend.
+- validation: Re-run the failing operator with corrected shape, dtype, and mode assumptions and confirm whether the unsupported-path signal disappears.
+
 ### Device Target Mismatch
 
 - kind: known_issue
@@ -192,7 +240,7 @@ Do not auto-mutate Factory from this file.
 - confidence_level: bootstrap
 - tags: [ms, graph, compile, infer, frontend, pynative]
 - affects_platforms: [ascend, gpu, cpu]
-- detection_pattern: "graph compile|infer failed|abstract type|compile failed|GRAPH_MODE"
+- detection_pattern: "graph compile failed|infer failed.*GRAPH|abstract type.*GRAPH|compile failed.*GRAPH_MODE"
 - description: GRAPH_MODE compilation fails because the program uses unsupported control flow, unsupported Python constructs, or incompatible abstract inference paths.
 - fix_summary: Narrow the failing construct in a minimal example, compare behavior in PyNative mode, and replace unsupported graph patterns with supported equivalents.
 - validation: Re-run the minimal case in PyNative mode and confirm the error is specific to graph compilation rather than a general runtime failure.
@@ -208,7 +256,7 @@ Do not auto-mutate Factory from this file.
 - confidence_level: bootstrap
 - tags: [ms, shape, infer, dimensions, rank]
 - affects_platforms: [ascend, gpu, cpu]
-- detection_pattern: "shape|infer|dimensions|rank mismatch|expected"
+- detection_pattern: "shape infer failed|rank mismatch|invalid shape|dimensions.*operator"
 - description: Input tensor shapes or ranks violate operator constraints, causing shape inference to fail before or during execution.
 - fix_summary: Inspect the concrete tensor shapes flowing into the failing operator and correct reshape, transpose, broadcast, or rank assumptions.
 - validation: Print the intermediate tensor shapes at the failing boundary and confirm they now match the operator contract.
@@ -224,7 +272,7 @@ Do not auto-mutate Factory from this file.
 - confidence_level: bootstrap
 - tags: [ms, dtype, cast, precision, validation]
 - affects_platforms: [ascend, gpu, cpu]
-- detection_pattern: "TypeError|dtype|Float32|Float16|type not match|cast"
+- detection_pattern: "dtype.*not match|type not match|unsupported dtype|Cast.*failed"
 - description: Tensor types or mixed-precision settings do not satisfy operator requirements, so MindSpore rejects the call or fails later in execution.
 - fix_summary: Align the input and parameter dtypes explicitly and verify whether mixed-precision settings or implicit casts are creating the mismatch.
 - validation: Print the failing tensors' dtypes and confirm the operator runs after explicit casting to a consistent supported type set.
@@ -272,7 +320,7 @@ Do not auto-mutate Factory from this file.
 - confidence_level: bootstrap
 - tags: [ms, mint, graph, jit, view, reshape]
 - affects_platforms: [ascend, gpu, cpu]
-- detection_pattern: "jit_view_unsupported|view|squeeze|flatten|reshape|GRAPH_MODE|graph compile"
+- detection_pattern: "jit_view_unsupported|mint.*view|mint.*squeeze|mint.*flatten|mint.*reshape|graph compile.*view"
 - description: Some `mint` view-style APIs are not safe in GRAPH_MODE or JIT lowering, so code that works in eager-style execution can fail or behave incorrectly when compiled.
 - fix_summary: Narrow the failing view op, compare with PyNative behavior, and replace the unsupported `mint` view path with a safer `ops.*` path or an explicitly materialized tensor.
 - validation: Re-run the same logic in PyNative mode and confirm the failure is tied to the graph-compiled view path rather than to the underlying data itself.
@@ -308,6 +356,70 @@ Do not auto-mutate Factory from this file.
 - description: Distributed startup fails before training begins because the rendezvous or TCP store settings are inconsistent, unreachable, or launched in the wrong order.
 - fix_summary: Verify the rendezvous address, port, rank, and world-size settings first, then confirm the master process is reachable before debugging collective kernels.
 - validation: Launch a minimal distributed startup test with the same rendezvous settings and confirm all ranks can initialize successfully.
+
+### Graph vs PyNative Divergence
+
+- kind: known_issue
+- symptom: failure
+- id_hint: ms-graph-vs-pynative-divergence
+- severity: medium
+- lifecycle_state: stable
+- source_kind: bootstrap
+- confidence_level: bootstrap
+- tags: [ms, graph, pynative, compile, mode, divergence]
+- affects_platforms: [ascend, gpu, cpu]
+- detection_pattern: "graph only|works in PyNative|works in PYNATIVE_MODE|PyNative works|compile only"
+- description: The failing logic behaves differently across Graph and PyNative mode, which usually means the first diagnosis target is frontend lowering, infer, or mode-specific API semantics instead of a generic backend bug.
+- fix_summary: Reproduce the same step in both modes, then route Graph-only failures to compile, infer, view semantics, or graph-safe API checks before backend escalation.
+- validation: Confirm the failure reproduces in exactly one mode and stays stable after narrowing to the smallest mode-sensitive example.
+
+### Backward-Only or Bprop Failure
+
+- kind: known_issue
+- symptom: failure
+- id_hint: ms-backward-only-bprop-failure
+- severity: medium
+- lifecycle_state: stable
+- source_kind: bootstrap
+- confidence_level: bootstrap
+- tags: [ms, backward, bprop, grad, autograd, graph]
+- affects_platforms: [ascend, gpu, cpu]
+- detection_pattern: "bprop|GradOf|gradient|backward only|zero grad|grad_ops"
+- description: The forward path is healthy but the backward graph, bprop builder, or gradient-only dtype or shape path fails, which is commonly misread as a forward kernel defect.
+- fix_summary: Split forward and backward reproduction first, then inspect bprop registration, gradient graph structure, and grad-only dtype or shape coverage.
+- validation: Run a forward-only control and confirm the original symptom appears only when gradient or backward execution is enabled.
+
+### Import Path or Callable Shape Drift
+
+- kind: known_issue
+- symptom: failure
+- id_hint: ms-import-path-callable-shape-drift
+- severity: medium
+- lifecycle_state: stable
+- source_kind: bootstrap
+- confidence_level: bootstrap
+- tags: [ms, import, packaging, callable, refactor, api]
+- affects_platforms: [ascend, gpu, cpu]
+- detection_pattern: "ImportError|AttributeError|module is not callable|unexpected keyword|old import path|refactor"
+- description: A refactor or API move changes the import target, callable shape, or wrapper signature, so the visible failure is packaging or API drift rather than backend execution.
+- fix_summary: Check the effective import target, wrapper signature, and recently moved API entrypoints before debugging runtime layers.
+- validation: Print the resolved symbol and call signature, then confirm the failure disappears after switching to the current import path or callable contract.
+
+### Benchmark or Stack Upgrade Drift
+
+- kind: known_issue
+- symptom: failure
+- id_hint: ms-benchmark-or-stack-upgrade-drift
+- severity: low
+- lifecycle_state: stable
+- source_kind: bootstrap
+- confidence_level: bootstrap
+- tags: [ms, precision, benchmark, version, drift, cann]
+- affects_platforms: [ascend, gpu, cpu]
+- detection_pattern: "allclose.*after upgrade|small drift.*version|precision.*baseline|baseline changed"
+- description: A small but stable deviation after a stack upgrade is often version or benchmark drift, not a functional runtime regression.
+- fix_summary: Check version deltas and compare the magnitude and stability of the deviation before escalating to kernel logic or graph correctness.
+- validation: Re-run the same comparison with the previous stack or a control backend and confirm the deviation is small, stable, and version-correlated.
 
 ## PTA / torch_npu-Focused Failures
 
@@ -392,3 +504,35 @@ Do not auto-mutate Factory from this file.
 - description: The requested int4 weight-packing path is not wired up for NPU, so PyTorch dispatch falls back into an unsupported path instead of finding an NPU-specific implementation.
 - fix_summary: Treat this as an operator-support gap first: use the NPU-specific weight-packing path if one exists, or fall back to a supported quantization workflow instead of assuming a generic CANN runtime bug.
 - validation: Check whether the call site can be switched to a supported NPU quantization or packing path and confirm the same dispatcher error disappears.
+
+### Mixed CPU and NPU Device Placement
+
+- kind: known_issue
+- symptom: failure
+- id_hint: pta-mixed-cpu-npu-device-placement
+- severity: medium
+- lifecycle_state: stable
+- source_kind: bootstrap
+- confidence_level: bootstrap
+- tags: [pta, torch_npu, device, placement, cpu, npu]
+- affects_platforms: [ascend]
+- detection_pattern: "Expected all tensors to be on the same device|cpu and npu|device mismatch|PrivateUse1"
+- description: The failing path mixes CPU and NPU tensors or modules, which is often misread as missing operator support because the visible error appears at dispatch time.
+- fix_summary: Normalize every input, parameter, and temporary tensor to the intended device before investigating registration or ACLNN coverage.
+- validation: Print the concrete devices of the failing tensors and confirm the error disappears after consistent placement on one device.
+
+### ACLNN Interface Missing or Capability Floor Mismatch
+
+- kind: known_issue
+- symptom: failure
+- id_hint: pta-aclnn-interface-missing-or-capability-floor
+- severity: medium
+- lifecycle_state: stable
+- source_kind: bootstrap
+- confidence_level: bootstrap
+- tags: [pta, torch_npu, aclnn, capability, version, support]
+- affects_platforms: [ascend]
+- detection_pattern: "aclnn.*not found|kernel not found|561003|feature not supported|capability mismatch"
+- description: The requested ACLNN path is unavailable because the installed CANN capability set, OPP package, or version floor does not cover the operator variant being exercised.
+- fix_summary: Check the CANN version, OPP path, and operator capability set before treating the symptom as dispatcher corruption or a generic runtime bug.
+- validation: Compare the failing operator against the current CANN capability set and confirm the error disappears on a known-supported version or operator variant.

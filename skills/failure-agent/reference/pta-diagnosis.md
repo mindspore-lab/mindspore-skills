@@ -22,10 +22,20 @@ cause:
 - CANN version
 - device placement of the failing tensors
 - whether the failure happens in eager op execution, autograd, or a higher-level module path
+- whether the failure is single-card or distributed
+- whether the visible failure is on the base operator path or only through a wrapper, module, or helper
 - whether async execution could be hiding the first real stack frame
 
 If the user only gives a downstream stack, re-run with `ASCEND_LAUNCH_BLOCKING=1`
 or another blocking mode before blaming registration or ACLNN.
+
+Evidence checklist to normalize early:
+
+1. print the concrete PyTorch, `torch_npu`, and CANN versions
+2. print the real device placement of inputs, parameters, and temporary tensors
+3. separate eager forward, backward-only, and wrapper or module-only failures
+4. separate single-card from distributed execution
+5. confirm whether async execution is hiding the first real failure point
 
 ## torch_npu ERR Format
 
@@ -113,6 +123,37 @@ High-value routing checks:
 - OOM or allocator failure
   - treat as `device-out-of-memory` first
 
+## Quick Route
+
+Use this order unless the evidence clearly forces a narrower route:
+
+1. check `reference/failure-showcase.md` for a direct stable pattern match
+2. classify the strongest code family:
+   - `ERRxxxx`
+   - `107xxx`, `207xxx`, `507xxx`
+   - `161xxx`, `361xxx`, `561xxx`
+   - `EIxxxx`, `ELxxxx`, `EZxxxx`
+3. decide whether the symptom is:
+   - environment or version compatibility
+   - operator registration or dispatcher
+   - ACLNN capability or parameter contract
+   - HCCL or distributed ordering
+   - memory or device-health path
+4. only then decide whether the issue is a real operator support gap
+
+High-value routing shortcuts:
+
+- `Expected all tensors to be on the same device`
+  - route to device placement before operator support
+- `PrivateUse1 dispatcher not registered`
+  - route to dispatcher or registration before generic runtime
+- `aclnnXxx` missing or `561003`
+  - route to CANN capability, OPP, or version floor before registration corruption
+- `EI0002`, `EI0006`, `107020`
+  - route to HCCL ordering, rank progress, or timeout instead of operator logic
+- `symbol not found`, ABI or import failure after upgrade
+  - route to version compatibility before backend behavior
+
 ## Common Failure Classes
 
 - operator registration gap
@@ -137,6 +178,17 @@ Use these checks to avoid over-calling a torch_npu operator bug:
 - stream or context style failures after reuse across devices
   - treat as context-lifetime or async-path issues before inferring op logic defects
 
+Additional direction checks:
+
+- wrapper or module failure with a clean explicit op call
+  - do not call it a base kernel bug until the explicit op reproduces
+- backward-only failure while forward succeeds
+  - route to autograd, gradient registration, or backward-specific dtype or shape coverage first
+- ACLNN interface missing on one host but not another
+  - route to version floor, OPP contents, or capability drift before blaming dispatcher state
+- feature-not-supported wording with a clear invalid-parameter signature
+  - route to parameter contract or dtype or shape preconditions first
+
 ## Quick Contrast Checks
 
 - explicit op call vs higher-level module or composite path
@@ -147,6 +199,34 @@ Use these checks to avoid over-calling a torch_npu operator bug:
   - distinguishes forward-kernel issues from gradient or composite-path issues
 - blocking vs default async execution
   - improves stack accuracy for delayed kernel-launch failures
+
+Useful low-cost contrast pairs:
+
+- explicit `torch_npu` or op call vs module or composite wrapper
+- forward-only vs backward-enabled repro
+- single rank vs distributed launch
+- current stack vs known-compatible version matrix
+
+## Index Linkage
+
+Use the structured indexes after lightweight routing, not before it.
+Use [cann-api-reference](cann-api-reference.md) when the route is already on
+the CANN or ACLNN side and you only need index-specific interpretation.
+
+### CANN index handoff
+
+Move to [cann-api-reference](cann-api-reference.md) when:
+
+- the failure has a stable CANN, ACL, HCCL, or runtime code family
+- the failure names an `aclnnXxx` interface directly
+- the logs suggest a missing interface, missing kernel package, or unsupported ACLNN path
+- you need to separate parameter, runtime, internal fault, capability, or contract classes
+
+Use the concrete short command examples in
+[cann-api-reference](cann-api-reference.md#query-command-examples).
+
+If the DB index and the local evidence disagree, keep the local evidence as
+primary and downgrade confidence instead of forcing the index to win.
 
 ## Upstream PyTorch Baseline
 

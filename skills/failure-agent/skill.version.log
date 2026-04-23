@@ -1,3 +1,25 @@
+2026-04-20 | failure-agent | version 0.7.0
+Summary:
+- Added indexed failure references and remote index builders so `failure-agent` can query CANN errors, ACLNN APIs, and MindSpore mint API mappings from skill-local structured indexes.
+
+Detailed changes:
+- Added default runtime DB indexes under `reference/index/` for CANN error codes, CANN ACLNN APIs, and MindSpore mint API facts.
+- Added `scripts/query_cann_index.py` and `scripts/query_mint_api_index.py` as read-only CLI entrypoints for diagnosis-time index lookup.
+- Added `scripts/index_builders/generate_cann_failure_index.py` and `scripts/index_builders/generate_mindspore_failure_index.py` as skill-local one-shot builders for rebuilding the indexed references.
+- Added `scripts/index_builders/mint_api_methodology.md` to document the MindSpore mint index builder rules and field semantics.
+- Updated `SKILL.md` and runtime references to route CANN, ACLNN, MindSpore, PTA, and mint-scoped failures through the new DB/query-script flow while preserving manual-only and Factory-read-only boundaries.
+- Expanded `failure-showcase.md`, `mindspore-diagnosis.md`, `pta-diagnosis.md`, `mindspore-api-reference.md`, and `cann-api-reference.md` with index-backed routing guidance.
+- Added `.gitignore` handling for builder temporary workspaces and updated `skill.yaml` metadata.
+- Consolidated index-related tests into `tests/test_indexes.py`, keeping mint DB semantic regression coverage while removing default-release dependence on optional YAML exports and local absolute MindSpore checkout paths.
+- Simplified structure tests to validate the default runtime surface: core references, query scripts, helper scripts, and default DB indexes.
+- Added human-readable pretty JSON output for query scripts via `--pretty` / `-p` while preserving compact JSON as the default automation format.
+- Exposed mint ACLNN facts directly in `query_mint_api_index.py` `api` and `explain` outputs so DB query results include the same `aclnn` structure as the YAML export.
+- Clarified `query_mint_api_index.py --module` as mint-relative and added compatibility for bare `--name` queries.
+
+Validation:
+- `python -m pytest skills/failure-agent/tests -q`
+- Result: 111 passed, 7 skipped
+
 2026-03-21 | failure-agent | version 0.5.x summary
 Summary:
 - The 0.5.x line turned `failure-agent` into a stable triage-and-routing skill for MindSpore and PTA with direct-read Factory alignment, local fallback references, and tighter dual-stack diagnosis rules.
@@ -27,7 +49,7 @@ Reference surface at the end of 0.5.x:
 - `cann-api-reference.md`
 
 Validation:
-- `python -m pytest d:\codex_workspace\mindspore-skills\skills\failure-agent\tests -q`
+- `python -m pytest skills/failure-agent/tests -q`
 - Result: 12 passed, 1 warning
 
 2026-03-19 | failure-agent | version 0.4.0
@@ -46,5 +68,5 @@ Detailed changes:
 - Updated skill.yaml description and bumped version from 0.3.0 to 0.4.0.
 - Rewrote structure and manifest tests and added behavior coverage for evidence/validation rules, MindSpore scoping/handoff, dual-stack routing, and B1.2 guidance alignment.
 Validation:
-- python -m pytest d:\codex_workspace\mindspore-skills\skills\failure-agent\tests -q
+- python -m pytest skills/failure-agent/tests -q
 - Result: 10 passed

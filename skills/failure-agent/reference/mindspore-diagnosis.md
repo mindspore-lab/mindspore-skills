@@ -1,8 +1,9 @@
 # MindSpore Deep Debug Reference
 
 Use this reference when a MindSpore runtime failure has already been scoped by
-`failure-agent`, but the next step now requires source-level investigation,
-historical issue mining, fix validation, or test planning.
+`failure-agent`, but the next step now requires systematic layer routing,
+source-level investigation, deeper index usage, fix validation, or test
+planning.
 
 This file is a local workflow aid. It does not authorize automatic code edits,
 Factory writes, or test changes by `failure-agent`.
@@ -22,6 +23,22 @@ Use this guide when the current issue needs one or more of these:
 - deeper operator or backend boundary confirmation
 - regression validation planning after a likely root cause is found
 - test-scope planning for an operator or runtime bug
+
+## Layered Route
+
+Use this four-layer route before deep source reading:
+
+1. Platform
+   - environment, device health, distributed startup, version drift, context ordering
+2. Scripts
+   - caller misuse, shape or dtype mistakes, import-path drift, benchmark harness issues
+3. Framework
+   - GRAPH vs PyNative divergence, infer, abstract, API semantics, `bprop`, wrapper behavior
+4. Backend
+   - ACLNN, TBE, runtime dispatch, kernel registration, device-runtime execution
+
+Do not skip directly to Backend when a cheaper Platform, Scripts, or Framework
+explanation still fits the first real failure point.
 
 ## Deep-Debug Workflow
 
@@ -43,6 +60,20 @@ Before reading source code, restate:
 
 If this scope is still unstable, return to lightweight triage instead of going
 deeper.
+
+### 1.5 Classify the failure before source reading
+
+Prefer one primary class first:
+
+- Python exception or API misuse
+- graph compile or abstract infer
+- backend runtime or ACLNN execution
+- distributed or collective setup
+- backward or `bprop`
+- numerical or precision symptom inside a runtime failure
+
+If the same repro changes class when switching mode, backend, or dtype, route
+to the earliest layer that explains the divergence.
 
 ### 2. Run contrast experiments to narrow the layer
 
@@ -93,11 +124,45 @@ Prefer a tiny contrast matrix before reading source:
 - blocking vs default async execution
   - helps verify whether the visible stack is delayed by async launch behavior
 
+Use these interpretations aggressively:
+
+- only `GRAPH_MODE` fails
+  - route to Framework first
+- only `PYNATIVE_MODE` fails
+  - route to API validation, eager runtime, or wrapper path first
+- only Ascend fails while CPU passes
+  - route to Backend or dispatch path, but still check API preconditions first
+- only backward fails while forward passes
+  - route to `bprop`, grad graph, or backward-only dtype coverage first
+
 ## Triage-Safe Routing Aids
 
 Use the sections below to stabilize the component route before source reading.
 They are still triage-safe because they only classify the likely layer and the
 next validation check.
+
+## Quick Route
+
+Use this order unless a direct known issue already matches:
+
+1. decide whether the first stable boundary is Platform, Scripts, Framework, or Backend
+2. compare `GRAPH_MODE` vs `PYNATIVE_MODE`
+3. compare Ascend vs CPU when possible
+4. separate forward-only from backward-enabled repro
+5. only then read the relevant index or source path
+
+High-value route shortcuts:
+
+- `AbstractProblem`, `Invalid abstract`, `InferShape`, `InferType`
+  - Framework first
+- `aclnn`, `LAUNCH_ACLNN`, `AclnnKernelMod`
+  - Backend first, but confirm shape and dtype contract
+- `BpropBuilder`, `GradOf`, zero grad, backward-only divergence
+  - Framework `bprop` first
+- `init_process_group`, `TCPStore`, collective setup
+  - Platform or distributed startup first
+- small, stable numerical drift after upgrade
+  - Platform version drift before framework regression
 
 ## Quick Component Routing
 
@@ -124,6 +189,50 @@ Route by the strongest stable signal first:
 - `device address`, `output addr`, import-path, or `module not callable` failures
   - first route: runtime, context, or packaging
   - first checks: context ordering, device target, import path, platform-specific execution path
+
+## API-Layer Routing
+
+Separate the API layer before reading any structured index:
+
+- `mindspore.mint`
+- `mindspore.mint.nn`
+- `mindspore.mint.nn.functional`
+- `mindspore.ops`
+- `mindspore.nn`
+
+Rules:
+
+- if only `mint` fails, check wrapper semantics, view or copy behavior, and mode restrictions before blaming the lower layer
+- if only `mint` fails, start with [mindspore-api-reference](mindspore-api-reference.md) before expanding to deeper source routing
+- if a `mint` failure also names `aclnn*`, `PyBoost`, or an ACLNN source file, query the mint API mapping first and then query the CANN contract; do not jump directly from the ACLNN frame to a backend root cause
+- if the failure is in `mindspore.ops.*` or `mindspore.nn.*`, prefer the general MindSpore route first
+- if `nn` module setup fails before the first real op launch, treat it as API or configuration validation first
+
+### When to query `reference/index/mint_api_index.db`
+
+Query the SQLite index when:
+
+- the failure explicitly mentions `mindspore.mint`, `mindspore.mint.nn`, or `mindspore.mint.nn.functional`
+- you need to decide whether a `mint` API maps directly to one lower-layer call, several possible lower-layer calls, or wrapper-only logic
+- you need `mint`-specific wrapper or support hints before going to source
+
+Use `scripts/query_mint_api_index.py` as the read-only query entrypoint. If the
+database is missing or `sqlite3` is unavailable, skip the `mint` index query
+and continue with the general MindSpore route.
+
+Before source-level debug, complete the lightweight API path check described in
+[mindspore-api-reference](mindspore-api-reference.md#mint-api-index-quick-route).
+Keep the local traceback parameters primary when deciding whether the root
+cause is caller input, wrapper semantics, or backend behavior.
+
+If the user's active MindSpore version, commit, branch, or local MindSpore
+source tree is available and it does not match the static DB snapshot, lower
+confidence in the built-in mint index. Rebuilding `mint_api_index.db` is an
+explicit index-maintenance action, not a default runtime diagnosis step.
+
+If the failure is rooted in `mindspore.ops`, `mindspore.nn`, infer, compiler,
+or backend execution without a clear `mint` entrypoint, prefer the general
+MindSpore route and source-level investigation path first.
 
 ## Stack-Frame Routing Hints
 
@@ -223,6 +332,19 @@ Concrete high-value patterns:
   - likely route: ACLNN or CANN implementation behavior, not API wiring
   - validate by comparing CPU behavior and, when available, torch_npu behavior on the same host
 
+Additional MindSpore-specific misreads:
+
+- Graph-only failures being called backend bugs
+  - confirm the same path in `PYNATIVE_MODE` before escalating to ACLNN or TBE
+- backward-only failures being called forward kernel bugs
+  - split forward and backward before inspecting kernel registration
+- view or copy semantics being called shape inference bugs
+  - confirm whether the failing path uses `mint` view-style APIs in graph-sensitive code
+- benchmark drift being called correctness regressions
+  - compare version deltas and tolerance expectations first
+- API validation bypass or wrapper drift being called runtime instability
+  - inspect the public API layer before reading backend code
+
 ## Regression Validation Checklist
 
 Once a likely root cause is identified, define validation before discussing any
@@ -249,7 +371,7 @@ If the bug would require a test in a deeper workflow, scope it like this:
 - mode coverage when Graph and PyNative diverge
 - backward-path coverage when the issue is gradient or bprop specific
 
-Avoid broad “test everything” plans. Add the narrowest test set that would have
+Avoid broad "test everything" plans. Add the narrowest test set that would have
 caught the observed bug and a closely related regression.
 
 ## ACLNN and Ascend Notes
@@ -262,4 +384,4 @@ For Ascend-specific runtime or operator failures, verify:
 - whether the failure happens only on one device generation or software stack
 
 If the same logical op works on CPU but fails only on Ascend, do not jump
-directly to “kernel bug” before checking version and dispatch-path alignment.
+directly to "kernel bug" before checking version and dispatch-path alignment.

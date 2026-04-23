@@ -97,6 +97,9 @@ You must try to identify:
   - `mindspore`
   - `pta`
   - backend and device context when visible
+- stack-specific evidence:
+  - for `pta`: PyTorch, `torch_npu`, CANN, device placement, eager vs backward vs wrapper path, single-card vs distributed, and whether async launch hides the first real failure
+  - for `mindspore`: MindSpore, CANN, mode, device target, Graph vs PyNative split, forward vs backward split, and whether the failure starts in Platform, Scripts, Framework, or Backend routing
 - likely problem domains:
   - environment or runtime
   - libraries
@@ -132,6 +135,19 @@ When useful, read the latest preflight or readiness snapshot such as
 If `factory_root` is provided or discoverable, use relevant local Factory cards
 and references as supporting evidence. Treat them as evidence aids, not as a
 substitute for local validation.
+
+Validate in this default order:
+
+1. check `reference/failure-showcase.md` for a stable known-issue match
+2. route by stack into:
+   - `reference/pta-diagnosis.md`
+   - `reference/mindspore-api-reference.md`
+   - `reference/mindspore-diagnosis.md`
+   - `reference/cann-api-reference.md`
+3. use the structured runtime indexes to confirm code families, API mapping, and capability or contract signals
+   - use `scripts/query_cann_index.py` for CANN error-code and ACLNN contract checks
+   - use `scripts/query_mint_api_index.py` for explicit `mindspore.mint*` failures
+4. keep local traceback, logs, and artifacts primary if the index and local evidence disagree
 
 Return ranked root-cause candidates with:
 
@@ -227,12 +243,23 @@ Load these references when needed:
 - `reference/cann-api-reference.md`
 - `reference/failure-showcase.md`
 
+Read them in this order by default:
+
+1. `reference/failure-showcase.md`
+2. stack-specific diagnosis reference
+3. relevant helper script from the Scripts section
+
+For concrete CANN and mint query command examples, use
+`reference/cann-api-reference.md` and `reference/mindspore-api-reference.md`.
+
 ## Scripts
 
 Use these helper scripts when useful:
 
 - `scripts/collect_failure_context.py`
+- `scripts/query_cann_index.py`
 - `scripts/summarize_traceback.py`
+- `scripts/query_mint_api_index.py`
 
 ## Execution Notes
 

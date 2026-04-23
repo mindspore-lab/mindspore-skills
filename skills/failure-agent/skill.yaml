@@ -2,7 +2,7 @@ schema_version: "1.1.0"
 name: "failure-agent"
 display_name: "Failure Agent"
 description: "Diagnose training and runtime failures across MindSpore and PTA (PyTorch + torch_npu) by analyzing failure evidence, validating the most likely root causes, preserving a reusable diagnosis snapshot, and emitting an actionable report."
-version: "0.6.0"
+version: "0.7.0"
 
 entry:
   type: "manual"

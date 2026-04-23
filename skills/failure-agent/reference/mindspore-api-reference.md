@@ -109,6 +109,36 @@ Common pitfalls worth checking before deep debugging:
 - strict parameter validation in `mint.nn` and `nn` modules
 - graph-only vs backend-only operator support differences
 
+## mint API Index Quick Route
+
+Use the mint index only when the failure explicitly lands in `mindspore.mint`,
+`mindspore.mint.nn`, or `mindspore.mint.nn.functional`.
+
+Default structured inputs:
+
+- `reference/index/mint_api_index.db`
+- `scripts/query_mint_api_index.py`
+
+Prefer short commands:
+
+```bash
+python scripts/query_mint_api_index.py mint.sum
+python scripts/query_mint_api_index.py explain mint.sum
+python scripts/query_mint_api_index.py search "reduce sum"
+```
+
+Use the mint query to map the public API to its wrapper, primitive, path hints,
+backend support, and effective ACLNN interface. If the same traceback also
+names `PyBoost`, `AclnnKernelMod`, or `aclnnXxx`, query the mint mapping first,
+then use [cann-api-reference](cann-api-reference.md#query-command-examples) to
+interpret the ACLNN contract or error code.
+
+If the failing symbol is `mindspore.ops.*`, `mindspore.nn.*`, or a backend
+Primitive without a `mint` entrypoint, prefer the general MindSpore route
+instead of starting from the mint index. If `mint_api_index.db` is missing or
+`sqlite3` is unavailable, skip the mint index query and continue with the
+general route.
+
 ## Operator Debugging Checklist
 
 - confirm the first failure point instead of a downstream runtime error

@@ -1,0 +1,7 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Index builder workspaces
+scripts/index_builders/.tmp/
